@@ -49,6 +49,11 @@ JsonGenericValue toJsonValue(const gfx::replay::Keyframe& keyframe,
     io::addMember(obj, "userTransforms", userTransformsArray, allocator);
   }
 
+  if (keyframe.lightsChanged) {
+    io::addMember(obj, "lightsChanged", true, allocator);
+    io::addMember(obj, "lights", keyframe.lights, allocator);
+  }
+
   return obj;
 }
 
@@ -98,7 +103,95 @@ bool fromJsonValue(const JsonGenericValue& obj,
     }
   }
 
+  io::readMember(obj, "lightsChanged", keyframe.lightsChanged);
+  if (keyframe.lightsChanged) {
+    io::readMember(obj, "lights", keyframe.lights);
+  }
+
   return true;
+}
+
+JsonGenericValue toJsonValue(const esp::assets::AssetInfo& x,
+                             JsonAllocator& allocator) {
+  JsonGenericValue obj(rapidjson::kObjectType);
+  addMemberAsUint32(obj, "type", x.type, allocator);
+  addMember(obj, "filepath", x.filepath, allocator);
+  addMember(obj, "frame", x.frame, allocator);
+  addMember(obj, "virtualUnitToMeters", x.virtualUnitToMeters, allocator);
+  addMember(obj, "forceFlatShading", x.forceFlatShading, allocator);
+  addMember(obj, "splitInstanceMesh", x.splitInstanceMesh, allocator);
+  addMember(obj, "shaderTypeToUse", x.shaderTypeToUse, allocator);
+  addMember(obj, "overridePhongMaterial", x.overridePhongMaterial, allocator);
+  addMember(obj, "hasSemanticTextures", x.hasSemanticTextures, allocator);
+
+  return obj;
+}
+
+bool fromJsonValue(const JsonGenericValue& obj, esp::assets::AssetInfo& x) {
+  readMemberAsUint32(obj, "type", x.type);
+  readMember(obj, "filepath", x.filepath);
+  readMember(obj, "frame", x.frame);
+  readMember(obj, "virtualUnitToMeters", x.virtualUnitToMeters);
+  readMember(obj, "forceFlatShading", x.forceFlatShading);
+  readMember(obj, "splitInstanceMesh", x.splitInstanceMesh);
+  readMember(obj, "shaderTypeToUse", x.shaderTypeToUse);
+  readMember(obj, "overridePhongMaterial", x.overridePhongMaterial);
+  readMember(obj, "hasSemanticTextures", x.hasSemanticTextures);
+  return true;
+}
+
+JsonGenericValue toJsonValue(
+    const metadata::attributes::ObjectInstanceShaderType& x,
+    JsonAllocator& allocator) {
+  return toJsonValue(metadata::attributes::getShaderTypeName(x), allocator);
+}
+
+bool fromJsonValue(const JsonGenericValue& obj,
+                   metadata::attributes::ObjectInstanceShaderType& x) {
+  std::string shaderTypeToUseString;
+  // read as string
+  bool shaderTypeSucceess = fromJsonValue(obj, shaderTypeToUseString);
+  // convert to enum
+  if (shaderTypeSucceess) {
+    const std::string shaderTypeLC =
+        Cr::Utility::String::lowercase(shaderTypeToUseString);
+    auto mapIter = metadata::attributes::ShaderTypeNamesMap.find(shaderTypeLC);
+    ESP_CHECK(mapIter != metadata::attributes::ShaderTypeNamesMap.end(),
+              "Illegal shader_type value '"
+                  << shaderTypeToUseString
+                  << "' specified in JSON to be used to set "
+                     "AssetInfo.shaderTypeToUse. "
+                     "Aborting.");
+    x = mapIter->second;
+  }
+  return shaderTypeSucceess;
+}
+
+JsonGenericValue toJsonValue(const esp::gfx::LightPositionModel& x,
+                             JsonAllocator& allocator) {
+  return toJsonValue(metadata::attributes::getLightPositionModelName(x),
+                     allocator);
+}
+
+bool fromJsonValue(const JsonGenericValue& obj,
+                   esp::gfx::LightPositionModel& x) {
+  std::string lightPositionModelString;
+  // read as string
+  bool success = fromJsonValue(obj, lightPositionModelString);
+  // convert to enum
+  if (success) {
+    const std::string lightPositionModelLC =
+        Cr::Utility::String::lowercase(lightPositionModelString);
+    auto mapIter =
+        metadata::attributes::LightPositionNamesMap.find(lightPositionModelLC);
+    ESP_CHECK(mapIter != metadata::attributes::LightPositionNamesMap.end(),
+              "Illegal model value '"
+                  << lightPositionModelString
+                  << "' specified in JSON to be used to set LightInfo.model. "
+                  << "Aborting.");
+    x = mapIter->second;
+  }
+  return success;
 }
 
 }  // namespace io

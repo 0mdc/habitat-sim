@@ -1,7 +1,3 @@
-if(NOT BUILD_GUI_VIEWERS AND CORRADE_TARGET_UNIX AND NOT CORRADE_TARGET_APPLE)
-  set(ESP_BUILD_EGL_SUPPORT ON)
-endif()
-
 if(BUILD_ASSIMP_SUPPORT)
   set(ESP_BUILD_ASSIMP_SUPPORT ON)
 endif()
@@ -31,6 +27,7 @@ configure_file(
 )
 
 find_package(Corrade REQUIRED Utility)
+find_package(MagnumIntegration REQUIRED Eigen)
 
 add_library(
   core STATIC

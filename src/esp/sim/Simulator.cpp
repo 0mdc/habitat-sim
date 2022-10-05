@@ -308,7 +308,7 @@ bool Simulator::createSceneInstance(const std::string& activeSceneName) {
           metadataMediator_->getLightLayoutAttributesManager()
               ->createLightSetupFromAttributes(lightSetupKey);
       // set lightsetup in resource manager
-      resourceManager_->setLightSetup(lightingSetup,
+      resourceManager_->setLightSetup(std::move(lightingSetup),
                                       Mn::ResourceKey{lightSetupKey});
     }
   }
@@ -626,12 +626,15 @@ void Simulator::reconfigureReplayManager(bool enableGfxReplaySave) {
   CORRADE_INTERNAL_ASSERT(resourceManager_);
   resourceManager_->setRecorder(gfxReplayMgr_->getRecorder());
 
-  // provide Player callback to replay manager
-  gfxReplayMgr_->setPlayerCallback(
+  // provide Player callbacks to replay manager
+  gfxReplayMgr_->setPlayerCallbacks(
       [this](const assets::AssetInfo& assetInfo,
              const assets::RenderAssetInstanceCreationInfo& creation)
           -> scene::SceneNode* {
         return loadAndCreateRenderAssetInstance(assetInfo, creation);
+      },
+      [this](const gfx::LightSetup& lights) -> void {
+        this->setLightSetup(lights);
       });
 }
 
