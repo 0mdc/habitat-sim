@@ -18,6 +18,7 @@
 #include "esp/physics/objectManagers/ArticulatedObjectManager.h"
 #include "esp/physics/objectManagers/RigidObjectManager.h"
 #include "esp/scene/SemanticScene.h"
+#include "esp/sim/ReplayBatchRenderer.h"
 #include "esp/sim/Simulator.h"
 #include "esp/sim/SimulatorConfiguration.h"
 
@@ -358,6 +359,28 @@ void initSimBindings(py::module& m) {
       .def("get_debug_line_render", &Simulator::getDebugLineRender,
            pybind11::return_value_policy::reference,
            R"(Get visualization helper for rendering lines.)");
+
+  // ==== ReplayBatchRenderer ====
+  py::class_<ReplayBatchRenderer, ReplayBatchRenderer::ptr>(
+      m, "ReplayBatchRenderer")
+      // modify constructor to pass MetadataMediator
+      .def(py::init<const ReplayBatchRendererConfiguration&>())
+      .def_property_readonly("renderer", &ReplayBatchRenderer::getRenderer)
+      .def("get_scene_graph", &ReplayBatchRenderer::getSceneGraph,
+           R"(PYTHON DOES NOT GET OWNERSHIP)",
+           py::return_value_policy::reference)
+      .def("get_semantic_scene_graph",
+           &ReplayBatchRenderer::getSemanticSceneGraph,
+           R"(PYTHON DOES NOT GET OWNERSHIP)",
+           py::return_value_policy::reference)
+      .def("get_environment_sensors",
+           &ReplayBatchRenderer::getEnvironmentSensors)
+      .def("set_sensor_transforms_from_keyframe",
+           &ReplayBatchRenderer::setSensorTransformsFromKeyframe)
+      .def("get_environment_sensor_parent_node",
+           &ReplayBatchRenderer::getEnvironmentSensorParentNode)
+      .def("set_environment_keyframe",
+           &ReplayBatchRenderer::setEnvironmentKeyframe);
 }
 
 }  // namespace sim
