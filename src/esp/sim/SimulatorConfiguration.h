@@ -26,6 +26,9 @@ struct SimulatorConfiguration {
   //! Optimisation for non-visual simulation. If false, no renderer will be
   //! created and no materials or textures loaded.
   bool createRenderer = true;
+  //! Use the batch renderer, which optimizes rendering of multiple concurrent
+  //! environments.
+  bool useBatchRenderer = false;
   //! Whether or not the agent can slide on NavMesh collisions.
   bool allowSliding = true;
   //! Enable or disable the frustum culling optimisation

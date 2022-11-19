@@ -89,9 +89,15 @@ class Simulator(SimulatorBackend):
                 "Config has not agents specified.  Must specify at least 1 agent"
             )
 
+        # TODO:
         config.sim_cfg.create_renderer = any(
             (len(cfg.sensor_specifications) > 0 for cfg in config.agents)
         )
+        # TODO:
+        #   config.sim_cfg.create_renderer = not config.sim_cfg.use_batch_renderer and any(
+        #       (len(cfg.sensor_specifications) > 0 for cfg in config.agents)
+        #   )
+
         config.sim_cfg.load_semantic_mesh |= any(
             (
                 any(
@@ -341,6 +347,8 @@ class Simulator(SimulatorBackend):
     def start_async_render_and_step_physics(
         self, dt: float, agent_ids: Union[int, List[int]] = 0
     ):
+        assert not self.config.sim_cfg.use_batch_renderer
+
         if self._async_draw_agent_ids is not None:
             raise RuntimeError(
                 "start_async_render_and_step_physics was already called.  "
@@ -361,6 +369,8 @@ class Simulator(SimulatorBackend):
         self.step_physics(dt)
 
     def start_async_render(self, agent_ids: Union[int, List[int]] = 0):
+        assert not self.config.sim_cfg.use_batch_renderer
+
         if self._async_draw_agent_ids is not None:
             raise RuntimeError(
                 "start_async_render_and_step_physics was already called.  "
@@ -430,21 +440,39 @@ class Simulator(SimulatorBackend):
         else:
             return_single = False
 
-        for agent_id in agent_ids:
-            agent_sensorsuite = self.__sensors[agent_id]
-            for _sensor_uuid, sensor in agent_sensorsuite.items():
-                sensor.draw_observation()
+        # When using the batch renderer, observations are not drawn here.
+        if not self.config.sim_cfg.use_batch_renderer:
+            for agent_id in agent_ids:
+                agent_sensorsuite = self.__sensors[agent_id]
+                for _sensor_uuid, sensor in agent_sensorsuite.items():
+                    sensor.draw_observation()
 
         # As backport. All Dicts are ordered in Python >= 3.7
         observations: Dict[int, ObservationDict] = OrderedDict()
         for agent_id in agent_ids:
             agent_observations: ObservationDict = {}
-            for sensor_uuid, sensor in self.__sensors[agent_id].items():
-                agent_observations[sensor_uuid] = sensor.get_observation()
+            if not self.config.sim_cfg.use_batch_renderer:
+                for sensor_uuid, sensor in self.__sensors[agent_id].items():
+                    agent_observations[sensor_uuid] = sensor.get_observation()
             observations[agent_id] = agent_observations
         if return_single:
             return next(iter(observations.values()))
         return observations
+
+    # TODO: Rename
+    def check_add_sim_blob_observation(self, observations):
+        if self.config.sim_cfg.use_batch_renderer:
+            agent_sensorsuite = self._sensors
+            sensor_user_prefix = "sensor_"  # temp: hard-coded to match BatchRenderer
+            for _sensor_uuid, sensor in agent_sensorsuite.items():
+                node = sensor._sensor_object.node
+                transform = node.absolute_transformation()
+                rotation = mn.Quaternion.from_matrix(transform.rotation())
+                self.gfx_replay_manager.add_user_transform_to_keyframe(
+                    sensor_user_prefix + _sensor_uuid, transform.translation, rotation
+                )
+            assert "sim_blob" not in observations
+            observations["sim_blob"] = self.gfx_replay_manager.extract_keyframe()
 
     @property
     def _default_agent(self) -> Agent:

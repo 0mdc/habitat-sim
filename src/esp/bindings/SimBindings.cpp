@@ -57,6 +57,9 @@ void initSimBindings(py::module& m) {
           "create_renderer", &SimulatorConfiguration::createRenderer,
           R"(Optimisation for non-visual simulation. If false, no renderer will be created and no materials or textures loaded.)")
       .def_readwrite(
+          "use_batch_renderer", &SimulatorConfiguration::useBatchRenderer,
+          R"(Use the batch renderer, which optimizes rendering of multiple concurrent environments.)")
+      .def_readwrite(
           "leave_context_with_background_renderer",
           &SimulatorConfiguration::leaveContextWithBackgroundRenderer,
           R"(See tutorials/async_rendering.py)")
@@ -360,10 +363,32 @@ void initSimBindings(py::module& m) {
            pybind11::return_value_policy::reference,
            R"(Get visualization helper for rendering lines.)");
 
+  // ==== ReplayBatchRendererConfiguration ====
+  py::class_<ReplayBatchRendererConfiguration,
+             ReplayBatchRendererConfiguration::ptr>(
+      m, "ReplayBatchRendererConfiguration")
+      .def(py::init(&ReplayBatchRendererConfiguration::create<>))
+      .def_readwrite("num_environments",
+                     &ReplayBatchRendererConfiguration::numEnvironments,
+                     R"(todo)")
+      .def_readwrite("sensor_specifications",
+                     &ReplayBatchRendererConfiguration::sensorSpecifications,
+                     R"(todo)")
+      .def_readwrite("gpu_device_id",
+                     &ReplayBatchRendererConfiguration::gpuDeviceId, R"(todo)")
+      .def_readwrite(
+          "force_separate_semantic_scene_graph",
+          &ReplayBatchRendererConfiguration::forceSeparateSemanticSceneGraph,
+          R"(todo)")
+      .def_readwrite(
+          "leave_context_with_background_renderer",
+          &ReplayBatchRendererConfiguration::leaveContextWithBackgroundRenderer,
+          R"(todo)");
+
   // ==== ReplayBatchRenderer ====
   py::class_<ReplayBatchRenderer, ReplayBatchRenderer::ptr>(
       m, "ReplayBatchRenderer")
-      // modify constructor to pass MetadataMediator
+      // TODO: modify constructor to pass MetadataMediator
       .def(py::init<const ReplayBatchRendererConfiguration&>())
       .def_property_readonly("renderer", &ReplayBatchRenderer::getRenderer)
       .def("get_scene_graph", &ReplayBatchRenderer::getSceneGraph,
