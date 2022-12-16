@@ -7,6 +7,7 @@
 #include "esp/assets/ResourceManager.h"
 #include "esp/gfx/RenderTarget.h"
 #include "esp/gfx/Renderer.h"
+#include "esp/gfx/replay/Keyframe.h"
 #include "esp/metadata/MetadataMediator.h"
 #include "esp/sensor/CameraSensor.h"
 #include "esp/sensor/SensorFactory.h"
@@ -48,13 +49,20 @@ Mn::Vector2i AbstractReplayRenderer::sensorSize(unsigned envIndex) {
   return doSensorSize(envIndex);
 }
 
-void AbstractReplayRenderer::clearEnviroment(unsigned envIndex) {
+void AbstractReplayRenderer::clearEnvironment(unsigned envIndex) {
   CORRADE_INTERNAL_ASSERT(envIndex < doEnvironmentCount());
   // TODO a strange API name, but it does what I need
   doPlayerFor(envIndex).close();
 }
 
 void AbstractReplayRenderer::setEnvironmentKeyframe(
+    unsigned envIndex,
+    gfx::replay::Keyframe& keyframe) {
+  CORRADE_INTERNAL_ASSERT(envIndex < doEnvironmentCount());
+  doPlayerFor(envIndex).setSingleKeyframe(std::move(keyframe));
+}
+
+void AbstractReplayRenderer::setEnvironmentKeyframeFromJson(
     unsigned envIndex,
     const std::string& serKeyframe) {
   CORRADE_INTERNAL_ASSERT(envIndex < doEnvironmentCount());

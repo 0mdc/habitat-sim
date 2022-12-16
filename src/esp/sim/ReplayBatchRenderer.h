@@ -63,9 +63,12 @@ class AbstractReplayRenderer {
   // Assumes there's just one sensor per env
   Magnum::Vector2i sensorSize(unsigned envIndex);
 
-  void clearEnviroment(unsigned envIndex);
+  void clearEnvironment(unsigned envIndex);
 
   void setEnvironmentKeyframe(unsigned envIndex,
+                              gfx::replay::Keyframe& keyframe);
+  
+  void setEnvironmentKeyframeFromJson(unsigned envIndex,
                               const std::string& serKeyframe);
 
   void setEnvironmentKeyframeUnwrapped(

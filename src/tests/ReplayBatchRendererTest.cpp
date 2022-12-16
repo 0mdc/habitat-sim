@@ -170,7 +170,7 @@ void ReplayBatchRendererTest::testIntegration() {
   }
 
   for (int envIndex = 0; envIndex < numEnvs; envIndex++) {
-    renderer->setEnvironmentKeyframe(envIndex, serKeyframes[envIndex]);
+    renderer->setEnvironmentKeyframeFromJson(envIndex, serKeyframes[envIndex]);
     renderer->setSensorTransformsFromKeyframe(envIndex, userPrefix);
   }
 

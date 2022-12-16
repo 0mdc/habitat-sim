@@ -7,6 +7,7 @@
 #include <Magnum/PythonBindings.h>
 #include <Magnum/SceneGraph/PythonBindings.h>
 
+#include "esp/gfx/replay/Keyframe.h"
 #include "esp/gfx/replay/Player.h"
 #include "esp/gfx/replay/ReplayManager.h"
 
@@ -18,6 +19,8 @@ namespace gfx {
 namespace replay {
 
 void initGfxReplayBindings(py::module& m) {
+  py::class_<Keyframe, Keyframe::ptr>(m, "Keyframe");
+  
   py::class_<Player, Player::ptr>(m, "Player")
       .def("get_num_keyframes", &Player::getNumKeyframes,
            R"(Get the currently-set keyframe, or -1 if no keyframe is set.)")
@@ -59,7 +62,7 @@ void initGfxReplayBindings(py::module& m) {
           R"(Save a render keyframe. A render keyframe can be loaded later and used to draw observations.)")
 
       .def(
-          "extract_keyframe",
+          "extract_keyframe_as_json_string",
           [](ReplayManager& self) {
             if (!self.getRecorder()) {
               throw std::runtime_error(
@@ -70,6 +73,18 @@ void initGfxReplayBindings(py::module& m) {
                 self.getRecorder()->extractKeyframe());
           },
           R"(Extract the current keyframe as a JSON-formatted string.)")
+
+        .def(
+          "extract_keyframe",
+          [](ReplayManager& self) {
+            if (!self.getRecorder()) {
+              throw std::runtime_error(
+                  "replay save not enabled. See "
+                  "SimulatorConfiguration.enable_gfx_replay_save.");
+            }
+            return self.getRecorder()->extractKeyframe();
+          },
+          R"(Extract the current keyframe.)")
 
       .def(
           "add_user_transform_to_keyframe",
