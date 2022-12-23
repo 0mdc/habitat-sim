@@ -54,6 +54,7 @@ struct Keyframe {
   std::unordered_map<std::string, Transform> userTransforms;
   std::vector<LightInfo> lights;
   bool lightsChanged = false;
+  bool sceneChanged = false;
 
   ESP_SMART_POINTERS(Keyframe)
 };

@@ -153,11 +153,32 @@ void Player::clearFrame() {
 }
 
 void Player::applyKeyframe(const Keyframe& keyframe) {
+  if (keyframe.sceneChanged) {
+    // Clear all instances
+    implementation_->deleteAssetInstances(createdInstances_);
+
+    // Keyframe deletions should contain all remaining instances when changing
+    // the scene. If this is not the case, the remaining instances are untracked
+    // and leaking. They will disappear from gfx-replay.
+    for (const auto& deletionInstanceKey : keyframe.deletions) {
+      const auto& createdInstanceIt =
+          createdInstances_.find(deletionInstanceKey);
+      if (createdInstanceIt != createdInstances_.end()) {
+        createdInstances_.erase(createdInstanceIt);
+      }
+    }
+    if (createdInstances_.size() > 0) {
+      ESP_WARNING() << "Gfx-replay instances leaked after scene change. Count: "
+                    << std::to_string(createdInstances_.size());
+      createdInstances_.clear();
+    }
+  }
+
   for (const auto& assetInfo : keyframe.loads) {
-    CORRADE_INTERNAL_ASSERT(assetInfos_.count(assetInfo.filepath) == 0);
     if (failedFilepaths_.count(assetInfo.filepath) != 0u) {
       continue;
     }
+    // This overwrites previous asset info if it was already registered.
     assetInfos_[assetInfo.filepath] = assetInfo;
   }
 
@@ -188,16 +209,19 @@ void Player::applyKeyframe(const Keyframe& keyframe) {
     createdInstances_[instanceKey] = node;
   }
 
-  for (const auto& deletionInstanceKey : keyframe.deletions) {
-    const auto& it = createdInstances_.find(deletionInstanceKey);
-    if (it == createdInstances_.end()) {
-      // missing instance for this key, probably due to a failed instance
-      // creation
-      continue;
-    }
+  // Deletions are already processed if the scene has changed
+  if (!keyframe.sceneChanged) {
+    for (const auto& deletionInstanceKey : keyframe.deletions) {
+      const auto& it = createdInstances_.find(deletionInstanceKey);
+      if (it == createdInstances_.end()) {
+        // missing instance for this key, probably due to a failed instance
+        // creation
+        continue;
+      }
 
-    implementation_->deleteAssetInstance(it->second);
-    createdInstances_.erase(deletionInstanceKey);
+      implementation_->deleteAssetInstance(it->second);
+      createdInstances_.erase(deletionInstanceKey);
+    }
   }
 
   for (const auto& pair : keyframe.stateUpdates) {

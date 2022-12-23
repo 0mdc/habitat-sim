@@ -87,6 +87,7 @@ void Recorder::onHideSceneGraph(const esp::scene::SceneGraph& sceneGraph) {
           delete instanceRecords_[index].deletionHelper;
         }
       });
+  currKeyframe_.sceneChanged = true;
 }
 
 void Recorder::saveKeyframe() {

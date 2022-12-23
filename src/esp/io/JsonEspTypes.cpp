@@ -54,6 +54,10 @@ JsonGenericValue toJsonValue(const gfx::replay::Keyframe& keyframe,
     io::addMember(obj, "lights", keyframe.lights, allocator);
   }
 
+  if (keyframe.sceneChanged) {
+    io::addMember(obj, "sceneChanged", true, allocator);
+  }
+
   return obj;
 }
 
@@ -107,6 +111,8 @@ bool fromJsonValue(const JsonGenericValue& obj,
   if (keyframe.lightsChanged) {
     io::readMember(obj, "lights", keyframe.lights);
   }
+
+  io::readMember(obj, "sceneChanged", keyframe.sceneChanged);
 
   return true;
 }
