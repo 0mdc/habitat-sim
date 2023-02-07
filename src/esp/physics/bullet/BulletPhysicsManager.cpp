@@ -131,7 +131,7 @@ int BulletPhysicsManager::addArticulatedObjectFromURDF(
     bool maintainLinkOrder,
     const std::string& lightSetup) {
   if (simulator_ != nullptr) {
-    // aquire context if available
+    // acquire context if available
     simulator_->getRenderGLContext();
   }
   ESP_CHECK(
@@ -205,6 +205,132 @@ int BulletPhysicsManager::addArticulatedObjectFromURDF(
       Corrade::Utility::Path::splitExtension(
           Corrade::Utility::Path::splitExtension(
               Corrade::Utility::Path::split(filepath).second())
+              .first())
+          .first();
+
+  std::string newArtObjectHandle =
+      articulatedObjectManager_->getUniqueHandleFromCandidate(
+          simpleArtObjHandle);
+  ESP_DEBUG() << "simpleArtObjHandle :" << simpleArtObjHandle
+              << " | newArtObjectHandle :" << newArtObjectHandle;
+
+  existingArticulatedObjects_.at(articulatedObjectID)
+      ->setObjectName(newArtObjectHandle);
+
+  // 2.0 Get wrapper - name is irrelevant, do not register on create.
+  ManagedArticulatedObject::ptr AObjWrapper = getArticulatedObjectWrapper();
+
+  // 3.0 Put articulated object in wrapper
+  AObjWrapper->setObjectRef(
+      existingArticulatedObjects_.at(articulatedObjectID));
+
+  // 4.0 register wrapper in manager
+  articulatedObjectManager_->registerObject(std::move(AObjWrapper),
+                                            newArtObjectHandle);
+
+  return articulatedObjectID;
+}  // BulletPhysicsManager::addArticulatedObjectFromURDF
+
+int BulletPhysicsManager::addSkinnedArticulatedObjectFromURDF(
+    const std::string& urdfPath,
+    const std::string& gltfPath,
+    bool fixedBase,
+    float globalScale,
+    float massScale,
+    bool forceReload,
+    bool maintainLinkOrder,
+    const std::string& lightSetup) {
+  auto& drawables = simulator_->getDrawableGroup();
+  return addSkinnedArticulatedObjectFromURDF(
+      urdfPath, gltfPath, &drawables, fixedBase, globalScale, massScale,
+      forceReload, maintainLinkOrder, lightSetup);
+}
+
+int BulletPhysicsManager::addSkinnedArticulatedObjectFromURDF(
+    const std::string& urdfPath,
+    const std::string& gltfPath,
+    DrawableGroup* drawables,
+    bool fixedBase,
+    float globalScale,
+    float massScale,
+    bool forceReload,
+    bool maintainLinkOrder,
+    const std::string& lightSetup) {
+  if (simulator_ != nullptr) {
+    // acquire context if available
+    simulator_->getRenderGLContext();
+  }
+  ESP_CHECK(
+      urdfImporter_->loadURDF(urdfPath, globalScale, massScale, forceReload),
+      "failed to parse/load URDF file" << urdfPath);
+
+  int articulatedObjectID = allocateObjectID();
+
+  // parse succeeded, attempt to create the articulated object
+  scene::SceneNode* objectNode = &staticStageObject_->node().createChild();
+  BulletArticulatedObject::ptr articulatedObject =
+      BulletArticulatedObject::create(objectNode, resourceManager_,
+                                      articulatedObjectID, bWorld_,
+                                      collisionObjToObjIds_);
+
+  // before initializing the URDF, import all necessary assets in advance
+  urdfImporter_->importURDFAssets();
+
+  BulletURDFImporter* u2b =
+      static_cast<BulletURDFImporter*>(urdfImporter_.get());
+
+  u2b->setFixedBase(fixedBase);
+
+  // TODO: set these flags up better
+  u2b->flags = 0;
+  if (maintainLinkOrder) {
+    u2b->flags |= CUF_MAINTAIN_LINK_ORDER;
+  }
+  u2b->initURDF2BulletCache();
+
+  articulatedObject->initializeFromURDF(*urdfImporter_, {}, physicsNode_);
+
+  // allocate ids for links
+  for (int linkIx = 0; linkIx < articulatedObject->btMultiBody_->getNumLinks();
+       ++linkIx) {
+    int linkObjectId = allocateObjectID();
+    articulatedObject->objectIdToLinkId_[linkObjectId] = linkIx;
+    collisionObjToObjIds_->emplace(
+        articulatedObject->btMultiBody_->getLinkCollider(linkIx), linkObjectId);
+  }
+
+  // attach link visual shapes
+  for (size_t urdfLinkIx = 0; urdfLinkIx < u2b->getModel()->m_links.size();
+       ++urdfLinkIx) {
+    auto urdfLink = u2b->getModel()->getLink(urdfLinkIx);
+    if (!urdfLink->m_visualArray.empty()) {
+      int bulletLinkIx =
+          u2b->cache->m_urdfLinkIndices2BulletLinkIndices[urdfLinkIx];
+      ArticulatedLink& linkObject = articulatedObject->getLink(bulletLinkIx);
+      ESP_CHECK(
+          attachLinkGeometry(&linkObject, urdfLink, drawables, lightSetup),
+          "BulletPhysicsManager::addArticulatedObjectFromURDF(): Failed to "
+          "instance render asset (attachGeometry) for link"
+              << urdfLinkIx << ".");
+      linkObject.node().computeCumulativeBB();
+    }
+  }
+
+  // clear the cache
+  u2b->cache = nullptr;
+
+  // base collider refers to the articulated object's id
+  collisionObjToObjIds_->emplace(
+      articulatedObject->btMultiBody_->getBaseCollider(), articulatedObjectID);
+
+  existingArticulatedObjects_.emplace(articulatedObjectID,
+                                      std::move(articulatedObject));
+
+  // get a simplified name of the handle for the object
+  std::string simpleArtObjHandle =
+      Corrade::Utility::Path::splitExtension(
+          Corrade::Utility::Path::splitExtension(
+              Corrade::Utility::Path::split(urdfPath).second())
               .first())
           .first();
 

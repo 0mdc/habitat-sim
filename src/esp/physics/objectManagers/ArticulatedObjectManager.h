@@ -91,6 +91,40 @@ class ArticulatedObjectManager
     return objPtr;
   }
 
+  /* TODO */
+  std::shared_ptr<ManagedArticulatedObject> addSkinnedArticulatedObjectFromURDF(
+      const std::string& urdfPath,
+      const std::string& gltfPath,
+      bool fixedBase = false,
+      float globalScale = 1.0,
+      float massScale = 1.0,
+      bool forceReload = false,
+      bool maintainLinkOrder = false,
+      const std::string& lightSetup = DEFAULT_LIGHTING_KEY);
+
+  /* TODO */
+  std::shared_ptr<ManagedArticulatedObject>
+  addSkinnedBulletArticulatedObjectFromURDF(
+      const std::string& urdfPath,
+      const std::string& gltfPath,
+      bool fixedBase = false,
+      float globalScale = 1.0,
+      float massScale = 1.0,
+      bool forceReload = false,
+      bool maintainLinkOrder = false,
+      const std::string& lightSetup = DEFAULT_LIGHTING_KEY) {
+    std::shared_ptr<ManagedArticulatedObject> objPtr =
+        addSkinnedArticulatedObjectFromURDF(urdfPath, gltfPath, fixedBase,
+                                            globalScale, massScale, forceReload,
+                                            maintainLinkOrder, lightSetup);
+
+    if (std::shared_ptr<ManagedBulletArticulatedObject> castObjPtr =
+            std::dynamic_pointer_cast<ManagedBulletArticulatedObject>(objPtr)) {
+      return castObjPtr;
+    }
+    return objPtr;
+  }
+
   /**
    * @brief Load, parse, and import a URDF file instantiating an @ref
    * BulletArticulatedObject in the world.

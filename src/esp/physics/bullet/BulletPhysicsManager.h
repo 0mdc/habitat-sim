@@ -128,6 +128,29 @@ class BulletPhysicsManager : public PhysicsManager {
       bool maintainLinkOrder = false,
       const std::string& lightSetup = DEFAULT_LIGHTING_KEY) override;
 
+  /* TODO */
+  int addSkinnedArticulatedObjectFromURDF(
+      const std::string& urdfPath,
+      const std::string& gltfPath,
+      bool fixedBase = false,
+      float globalScale = 1.0,
+      float massScale = 1.0,
+      bool forceReload = false,
+      bool maintainLinkOrder = false,
+      const std::string& lightSetup = DEFAULT_LIGHTING_KEY) override;
+
+  /* TODO */
+  int addSkinnedArticulatedObjectFromURDF(
+      const std::string& urdfPath,
+      const std::string& gltfPath,
+      DrawableGroup* drawables,
+      bool fixedBase = false,
+      float globalScale = 1.0,
+      float massScale = 1.0,
+      bool forceReload = false,
+      bool maintainLinkOrder = false,
+      const std::string& lightSetup = DEFAULT_LIGHTING_KEY) override;
+
   /**
    * @brief Use the metadata stored in io::URDF::Link to instance all visual
    * shapes for a link into the SceneGraph.

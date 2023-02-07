@@ -290,7 +290,23 @@ void initPhysicsWrapperManagerBindings(pybind11::module& m) {
           "light_setup_key"_a = DEFAULT_LIGHTING_KEY,
           R"(Load and parse a URDF file using the given 'filepath' into a model,
           then use this model to instantiate an Articulated Object in the world.
+          Returns a reference to the created object.)")
+
+      .def(
+          "add_skinned_articulated_object_from_urdf",
+#ifdef ESP_BUILD_WITH_BULLET
+          &ArticulatedObjectManager::addSkinnedBulletArticulatedObjectFromURDF,
+#else
+          &ArticulatedObjectManager::addSkinnedArticulatedObjectFromURDF,
+#endif
+
+          "urdf_path"_a, "gltf_path"_a, "fixed_base"_a = false,
+          "global_scale"_a = 1.0, "mass_scale"_a = 1.0,
+          "force_reload"_a = false, "maintain_link_order"_a = false,
+          "light_setup_key"_a = DEFAULT_LIGHTING_KEY,
+          R"(Load and parse a pair of URDF and GLTF files to instantiate a skinned Articulated Object in the world.
           Returns a reference to the created object.)");
+
 }  // initPhysicsWrapperManagerBindings
 
 }  // namespace physics

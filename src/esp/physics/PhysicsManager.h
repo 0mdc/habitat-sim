@@ -526,6 +526,35 @@ class PhysicsManager : public std::enable_shared_from_this<PhysicsManager> {
     return ID_UNDEFINED;
   }
 
+  /* TODO */
+  virtual int addSkinnedArticulatedObjectFromURDF(
+      CORRADE_UNUSED const std::string& urdfPath,
+      CORRADE_UNUSED const std::string& gltfPath,
+      CORRADE_UNUSED bool fixedBase = false,
+      CORRADE_UNUSED float globalScale = 1.0,
+      CORRADE_UNUSED float massScale = 1.0,
+      CORRADE_UNUSED bool forceReload = false,
+      CORRADE_UNUSED bool maintainLinkOrder = false,
+      CORRADE_UNUSED const std::string& lightSetup = DEFAULT_LIGHTING_KEY) {
+    ESP_DEBUG() << "Not implemented in base PhysicsManager.";
+    return ID_UNDEFINED;
+  }
+
+  /* TODO */
+  virtual int addSkinnedArticulatedObjectFromURDF(
+      CORRADE_UNUSED const std::string& urdfPath,
+      CORRADE_UNUSED const std::string& gltfPath,
+      CORRADE_UNUSED DrawableGroup* drawables,
+      CORRADE_UNUSED bool fixedBase = false,
+      CORRADE_UNUSED float globalScale = 1.0,
+      CORRADE_UNUSED float massScale = 1.0,
+      CORRADE_UNUSED bool forceReload = false,
+      CORRADE_UNUSED bool maintainLinkOrder = false,
+      CORRADE_UNUSED const std::string& lightSetup = DEFAULT_LIGHTING_KEY) {
+    ESP_DEBUG() << "Not implemented in base PhysicsManager.";
+    return ID_UNDEFINED;
+  }
+
   //! Remove an @ref ArticulatedObject from the world by unique id.
   virtual void removeArticulatedObject(int objectId);
 
