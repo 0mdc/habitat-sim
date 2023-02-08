@@ -2477,38 +2477,11 @@ void Viewer::keyPressEvent(KeyEvent& event) {
       break;
     }
     case KeyEvent::Key::T: {
-      //+ALT for fixedBase
-      bool fixedBase = bool(event.modifiers() & MouseEvent::Modifier::Alt);
-
-      // add an ArticulatedObject from provided filepath
-      std::string urdfFilepath;
-      if (event.modifiers() & MouseEvent::Modifier::Shift &&
-          !cachedURDF_.empty()) {
-        // quick-reload the most recently loaded URDF
-        ESP_DEBUG() << "URDF quick-reload: " << cachedURDF_;
-        urdfFilepath = cachedURDF_;
-      } else {
-        ESP_DEBUG() << "Load URDF: provide a URDF filepath.";
-        std::cin >> urdfFilepath;
-      }
-
-      if (urdfFilepath.empty()) {
-        ESP_DEBUG() << "... no input provided. Aborting.";
-      } else if (!Cr::Utility::String::endsWith(urdfFilepath, ".urdf") &&
-                 !Cr::Utility::String::endsWith(urdfFilepath, ".URDF")) {
-        ESP_DEBUG() << "... input is not a URDF. Aborting.";
-      } else if (Cr::Utility::Path::exists(urdfFilepath)) {
-        // cache the file for quick-reload with SHIFT-T
-        cachedURDF_ = urdfFilepath;
-        auto aom = simulator_->getArticulatedObjectManager();
-        auto ao = aom->addArticulatedObjectFromURDF(urdfFilepath, fixedBase,
-                                                    1.0, 1.0, true);
-        ao->setTranslation(
-            defaultAgent_->node().transformation().transformPoint(
-                {0, 1.0, -1.5}));
-      } else {
-        ESP_DEBUG() << "... input file not found. Aborting.";
-      }
+      auto aom = simulator_->getArticulatedObjectManager();
+      auto ao = aom->addSkinnedArticulatedObjectFromURDF(
+          "data/amass_male.urdf", "data/human.glb", false, 1.0, 1.0, true);
+      ao->setTranslation(defaultAgent_->node().transformation().transformPoint(
+          {0, 1.0, -1.5}));
     } break;
     case KeyEvent::Key::L: {
       // override the default light setup with the config in this directory
