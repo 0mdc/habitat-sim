@@ -853,6 +853,9 @@ class ResourceManager {
    */
   void loadMeshes(Importer& importer, LoadedAssetData& loadedAssetData);
 
+  /* TODO */
+  void loadSkins(Importer& importer, LoadedAssetData& loadedAssetData);
+
   /**
    * @brief Recursively build a unified @ref MeshData from loaded assets via a
    * tree of @ref MeshTransformNode.
@@ -1213,8 +1216,18 @@ class ResourceManager {
   int nextMaterialID_ = 0;
 
   /**
-   * @brief Storage for precomuted voxel grids. Useful for when multiple objects
-   * in a scene are using the same VoxelGrid.
+   * @brief The next available unique ID for loaded skins
+   */
+  int nextSkinID_ = 0;
+
+  /**
+   * @brief The skin data for loaded assets.
+   */
+  std::map<int, std::shared_ptr<Mn::Trade::SkinData3D>> skins_;
+
+  /**
+   * @brief Storage for precomputed voxel grids. Useful for when multiple
+   * objects in a scene are using the same VoxelGrid.
    *
    * Maps absolute path keys to VoxelGrid.
    */

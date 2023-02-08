@@ -77,6 +77,9 @@ struct MeshMetaData {
   std::pair<start, end> textureIndex =
       std::make_pair(ID_UNDEFINED, ID_UNDEFINED);
 
+  /* TODO */
+  std::pair<start, end> skinIndex = std::make_pair(ID_UNDEFINED, ID_UNDEFINED);
+
   /** @brief The root of the mesh component transformation hierarchy tree which
    * stores the relationship between components of the asset.*/
   MeshTransformNode root;
@@ -117,6 +120,12 @@ struct MeshMetaData {
   void setTextureIndices(int textureStart, int textureEnd) {
     textureIndex.first = textureStart;
     textureIndex.second = textureEnd;
+  }
+
+  /* TODO */
+  void setSkinIndices(int skinStart, int skinEnd) {
+    skinIndex.first = skinStart;
+    skinIndex.second = skinEnd;
   }
 
   /**

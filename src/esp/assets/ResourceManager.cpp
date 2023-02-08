@@ -44,6 +44,7 @@
 #include <Magnum/Trade/PbrMetallicRoughnessMaterialData.h>
 #include <Magnum/Trade/PhongMaterialData.h>
 #include <Magnum/Trade/SceneData.h>
+#include <Magnum/Trade/SkinData.h>
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/VertexFormat.h>
 
@@ -1756,6 +1757,8 @@ bool ResourceManager::loadRenderAssetGeneral(const AssetInfo& info) {
     loadMaterials(*fileImporter_, loadedAssetData);
   }
   loadMeshes(*fileImporter_, loadedAssetData);
+  loadSkins(*fileImporter_, loadedAssetData);
+
   auto inserted = resourceDict_.emplace(filename, std::move(loadedAssetData));
   MeshMetaData& meshMetaData = inserted.first->second.meshMetaData;
 
@@ -2444,6 +2447,25 @@ void ResourceManager::loadMeshes(Importer& importer,
     meshes_.emplace(meshStart + iMesh, std::move(gltfMeshData));
   }
 }  // ResourceManager::loadMeshes
+
+void ResourceManager::loadSkins(Importer& importer,
+                                LoadedAssetData& loadedAssetData) {
+  int skinStart = nextSkinID_;
+  int skinEnd = skinStart + importer.skin3DCount() - 1;
+  nextSkinID_ = skinEnd + 1;
+  loadedAssetData.meshMetaData.setSkinIndices(skinStart, skinEnd);
+
+  for (int iSkin = 0; iSkin < importer.skin3DCount(); ++iSkin) {
+    auto currentSkinID = skinStart + iSkin;
+
+    Cr::Containers::Optional<Mn::Trade::SkinData3D> skin =
+        importer.skin3D(currentSkinID);
+    CORRADE_INTERNAL_ASSERT(skin);
+    auto skinPtr = std::make_shared<Mn::Trade::SkinData3D>(std::move(*skin));
+
+    skins_.emplace(skinStart + iSkin, std::move(skinPtr));
+  }
+}  // ResourceManager::loadSkins
 
 Mn::Image2D ResourceManager::convertRGBToSemanticId(
     const Mn::ImageView2D& srcImage,
