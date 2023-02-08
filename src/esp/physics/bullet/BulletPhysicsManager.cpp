@@ -12,6 +12,7 @@
 #include "BulletDynamics/Featherstone/btMultiBodyLinkCollider.h"
 #include "BulletRigidObject.h"
 #include "BulletURDFImporter.h"
+#include "Magnum/Magnum.h"
 #include "esp/assets/ResourceManager.h"
 #include "esp/metadata/attributes/PhysicsManagerAttributes.h"
 #include "esp/physics/objectManagers/ArticulatedObjectManager.h"
@@ -289,6 +290,15 @@ int BulletPhysicsManager::addSkinnedArticulatedObjectFromURDF(
   u2b->initURDF2BulletCache();
 
   articulatedObject->initializeFromURDF(*urdfImporter_, {}, physicsNode_);
+
+  // load associated skinned mesh
+  assets::AssetInfo assetInfo = assets::AssetInfo::fromPath(gltfPath);
+  assets::RenderAssetInstanceCreationInfo creationInfo;
+  creationInfo.filepath = gltfPath;
+  creationInfo.lightSetupKey = lightSetup;
+  creationInfo.scale = globalScale * Mn::Vector3(1.f, 1.f, 1.f);
+  resourceManager_.loadAndCreateRenderAssetInstance(assetInfo, creationInfo,
+                                                    objectNode, drawables);
 
   // allocate ids for links
   for (int linkIx = 0; linkIx < articulatedObject->btMultiBody_->getNumLinks();
