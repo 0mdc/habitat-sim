@@ -1883,14 +1883,20 @@ scene::SceneNode* ResourceManager::createRenderAssetInstanceGeneralPrimitive(
                                       : scene::SceneNodeType::OBJECT;
   bool computeAbsoluteAABBs = creation.isStatic();
 
-  addComponent(loadedAssetData.meshMetaData,       // mesh metadata
-               newNode,                            // parent scene node
-               creation.lightSetupKey,             // lightSetup key
-               drawables,                          // drawable group
-               loadedAssetData.meshMetaData.root,  // mesh transform node
-               visNodeCache,  // a vector of scene nodes, the visNodeCache
-               computeAbsoluteAABBs,  // compute absolute AABBs
-               staticDrawableInfo);   // a vector of static drawable info
+  auto skinIt = skins_.find(loadedAssetData.meshMetaData.skinIndex.first);
+  if (skinIt == skins_.end()) {
+    addComponent(loadedAssetData.meshMetaData,       // mesh metadata
+                 newNode,                            // parent scene node
+                 creation.lightSetupKey,             // lightSetup key
+                 drawables,                          // drawable group
+                 loadedAssetData.meshMetaData.root,  // mesh transform node
+                 visNodeCache,  // a vector of scene nodes, the visNodeCache
+                 computeAbsoluteAABBs,  // compute absolute AABBs
+                 staticDrawableInfo);   // a vector of static drawable info
+  } else {
+    /* ... */
+    ESP_WARNING() << "Instancing skinned mesh.";
+  }
 
   if (computeAbsoluteAABBs) {
     // now compute aabbs by constructed staticDrawableInfo
