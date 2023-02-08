@@ -28,8 +28,7 @@ class SkinnedDrawable : public Drawable {
       const Mn::ResourceKey& materialDataKey,
       DrawableGroup* group,
       std::shared_ptr<Mn::Trade::SkinData3D> skin,
-      std::shared_ptr<std::unordered_map<int, const scene::SceneNode*>>
-          jointNodeMap);
+      std::unordered_map<int, const scene::SceneNode*> jointNodeMap);
 
   void setLightSetup(const Magnum::ResourceKey& lightSetupKey) override;
   static constexpr const char* SHADER_KEY_TEMPLATE = "Phong-lights={}-flags={}";
@@ -56,8 +55,7 @@ class SkinnedDrawable : public Drawable {
   Magnum::Shaders::PhongGL::Flags flags_;
 
   std::shared_ptr<Mn::Trade::SkinData3D> skin_;
-  std::shared_ptr<std::unordered_map<int, const scene::SceneNode*>>
-      jointNodeMap_;
+  std::unordered_map<int, const scene::SceneNode*> jointNodeMap_;
 };
 
 }  // namespace gfx

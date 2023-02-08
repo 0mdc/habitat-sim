@@ -37,8 +37,7 @@ SkinnedDrawable::SkinnedDrawable(
     const Mn::ResourceKey& materialDataKey,
     DrawableGroup* group,
     std::shared_ptr<Mn::Trade::SkinData3D> skin,
-    std::shared_ptr<std::unordered_map<int, const scene::SceneNode*>>
-        jointNodeMap)
+    std::unordered_map<int, const scene::SceneNode*> jointNodeMap)
     : Drawable{node, mesh, DrawableType::Generic, group},
       shaderManager_{shaderManager},
       lightSetup_{shaderManager.get<LightSetup>(lightSetupKey)},
@@ -148,7 +147,6 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
                  "SkinnedDrawable::draw() : GL mesh doesn't exist", );
 
   updateShader();
-
   updateShaderLightingParameters(transformationMatrix, camera);
 
   (*shader_)
@@ -191,8 +189,8 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
 
   Mn::Matrix4 lastTransform = Mn::Matrix4{Magnum::Math::IdentityInit};
   for (std::size_t i = 0; i != jointTransformations.size(); ++i) {
-    auto jointNodeIt = jointNodeMap_->find(skin_->joints()[i]);
-    if (jointNodeIt != jointNodeMap_->end()) {
+    auto jointNodeIt = jointNodeMap_.find(skin_->joints()[i]);
+    if (jointNodeIt != jointNodeMap_.end()) {
       jointTransformations[i] =
           jointNodeIt->second->absoluteTransformationMatrix() *
           skin_->inverseBindMatrices()[i];

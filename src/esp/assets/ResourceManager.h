@@ -543,6 +543,17 @@ class ResourceManager {
                       const Mn::ResourceKey& materialKey,
                       DrawableGroup* group = nullptr);
 
+  /* TODO */
+  void createSkinnedDrawable(
+      Mn::GL::Mesh* mesh,
+      gfx::Drawable::Flags& meshAttributeFlags,
+      scene::SceneNode& node,
+      const Mn::ResourceKey& lightSetupKey,
+      const Mn::ResourceKey& materialKey,
+      std::shared_ptr<Mn::Trade::SkinData3D> skin,
+      std::unordered_map<int, const scene::SceneNode*>& jointNodeMap,
+      DrawableGroup* group = nullptr);
+
   /**
    * @brief Remove the specified primitive mesh.
    *
@@ -720,7 +731,7 @@ class ResourceManager {
   /**
    * @brief Build data for a report for vertex color mapping to semantic scene
    * objects - this list of strings will disclose which colors are found in
-   * vertices but not in semantic scene descirptors, and which semantic objects
+   * vertices but not in semantic scene descriptors, and which semantic objects
    * do not have their colors mapped in mesh verts.
    */
   std::vector<std::string> buildVertexColorMapReport(
@@ -832,6 +843,27 @@ class ResourceManager {
                     bool computeAbsoluteAABBs,
                     std::vector<StaticDrawableInfo>& staticDrawableInfo);
 
+  /* TODO */
+  void addComponentSkinned(
+      const MeshMetaData& metaData,
+      scene::SceneNode& parent,
+      const Mn::ResourceKey& lightSetupKey,
+      DrawableGroup* drawables,
+      const MeshTransformNode& meshTransformNode,
+      std::vector<scene::SceneNode*>& visNodeCache,
+      bool computeAbsoluteAABBs,
+      std::vector<StaticDrawableInfo>& staticDrawableInfo,
+      std::shared_ptr<Mn::Trade::SkinData3D> skin,
+      std::unordered_map<int, const scene::SceneNode*>& jointNodeMap);
+
+  /* TODO */
+  void mapArticulatedObjectToSkinnedModel(
+      scene::SceneNode& parent,
+      const MeshTransformNode& meshTransformNode,
+      const RenderAssetInstanceCreationInfo& creationInfo,
+      std::shared_ptr<Mn::Trade::SkinData3D> skin,
+      std::unordered_map<int, const scene::SceneNode*>& jointNodeMap);
+
   /**
    * @brief Load textures from importer into assets, and update metaData for
    * an asset to link textures to that asset.
@@ -916,7 +948,7 @@ class ResourceManager {
   /**
    * @brief Boolean check if @p typeToCheck aligns with passed types explicitly
    * specified, or type in material
-   * @param typeToCheck The ObjectInstanceShaderType value beign queried for.
+   * @param typeToCheck The ObjectInstanceShaderType value being queried for.
    * @param materialData The material whose type we are verifying against
    * @param verificationType The ObjectInstanceShaderType we are verifying
    * against
@@ -1175,7 +1207,7 @@ class ResourceManager {
       const std::vector<StaticDrawableInfo>& staticDrawableInfo);
 
   /**
-   * @brief Compute absolute transformations of all drwables stored in
+   * @brief Compute absolute transformations of all drawables stored in
    * staticDrawableInfo_
    */
   std::vector<Mn::Matrix4> computeAbsoluteTransformations(
@@ -1322,7 +1354,7 @@ class ResourceManager {
   /**
    * @brief The imaged based lighting for PBR, each is a collection of
    * an environment map, an irradiance map, a BRDF lookup table (2D texture),
-   * and a pre-fitered map
+   * and a pre-filtered map
    */
   std::vector<std::unique_ptr<esp::gfx::PbrImageBasedLighting>>
       pbrImageBasedLightings_;
