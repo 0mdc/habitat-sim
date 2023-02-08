@@ -44,7 +44,10 @@ struct MeshTransformNode {
   Magnum::Matrix4 transformFromLocalToParent;
 
   /** @brief Default constructor. */
-  MeshTransformNode() = default;
+  MeshTransformNode() = default; /** @brief Name of the node */
+
+  /** @brief Node name in the original file. */
+  std::string name{};
 };
 
 /**

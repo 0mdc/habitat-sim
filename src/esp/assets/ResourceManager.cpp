@@ -1796,14 +1796,15 @@ bool ResourceManager::loadRenderAssetGeneral(const AssetInfo& info) {
     nodes[parent.first()]->componentID = parent.first();
   }
 
-  // Set transformations. Objects that are not part of the hierarchy are
-  // ignored, nodes that have no transformation entry retain an identity
+  // Set transformations and names. Objects that are not part of the hierarchy
+  // are ignored, nodes that have no transformation entry retain an identity
   // transformation.
   for (const Cr::Containers::Pair<unsigned, Mn::Matrix4>& transformation :
        scene->transformations3DAsArray()) {
     if (Cr::Containers::Optional<esp::assets::MeshTransformNode>& node =
             nodes[transformation.first()]) {
       node->transformFromLocalToParent = transformation.second();
+      node->name = fileImporter_->objectName(node->componentID);
     }
   }
 
