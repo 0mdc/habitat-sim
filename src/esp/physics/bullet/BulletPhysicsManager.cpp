@@ -297,6 +297,7 @@ int BulletPhysicsManager::addSkinnedArticulatedObjectFromURDF(
   creationInfo.filepath = gltfPath;
   creationInfo.lightSetupKey = lightSetup;
   creationInfo.scale = globalScale * Mn::Vector3(1.f, 1.f, 1.f);
+  creationInfo.rig = articulatedObject;
   resourceManager_.loadAndCreateRenderAssetInstance(assetInfo, creationInfo,
                                                     objectNode, drawables);
 
