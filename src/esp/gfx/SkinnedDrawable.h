@@ -10,6 +10,7 @@
 
 #include "esp/gfx/Drawable.h"
 #include "esp/gfx/ShaderManager.h"
+#include "esp/gfx/SkinData.h"
 
 namespace esp {
 namespace gfx {
@@ -27,8 +28,7 @@ class SkinnedDrawable : public Drawable {
       const Mn::ResourceKey& lightSetupKey,
       const Mn::ResourceKey& materialDataKey,
       DrawableGroup* group,
-      std::shared_ptr<Mn::Trade::SkinData3D> skin,
-      std::unordered_map<int, const scene::SceneNode*> jointNodeMap);
+      SkinData skinData);
 
   void setLightSetup(const Magnum::ResourceKey& lightSetupKey) override;
   static constexpr const char* SHADER_KEY_TEMPLATE = "Phong-lights={}-flags={}";
@@ -54,8 +54,7 @@ class SkinnedDrawable : public Drawable {
 
   Magnum::Shaders::PhongGL::Flags flags_;
 
-  std::shared_ptr<Mn::Trade::SkinData3D> skin_;
-  std::unordered_map<int, const scene::SceneNode*> jointNodeMap_;
+  SkinData skinData_;
 };
 
 }  // namespace gfx

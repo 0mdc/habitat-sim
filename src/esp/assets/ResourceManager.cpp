@@ -48,6 +48,7 @@
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/VertexFormat.h>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -60,6 +61,7 @@
 #include "esp/gfx/GenericDrawable.h"
 #include "esp/gfx/MaterialUtil.h"
 #include "esp/gfx/PbrDrawable.h"
+#include "esp/gfx/SkinData.h"
 #include "esp/gfx/SkinnedDrawable.h"
 #include "esp/gfx/replay/Recorder.h"
 #include "esp/io/Json.h"
@@ -90,30 +92,30 @@
 namespace Cr = Corrade;
 namespace Mn = Magnum;
 
-namespace {
+//namespace {
 // TODO: Either parameterize or enforce same bone names in GLTF and URDF.
-std::unordered_map<std::string, std::string> TEMP_rigMap = {
-    std::make_pair("m_avg_Pelvis", "root"),
-    std::make_pair("m_avg_L_Hip", "lhip"),
-    std::make_pair("m_avg_L_Knee", "lknee"),
-    std::make_pair("m_avg_L_Ankle", "lankle"),
-    std::make_pair("m_avg_R_Hip", "rhip"),
-    std::make_pair("m_avg_R_Knee", "rknee"),
-    std::make_pair("m_avg_R_Ankle", "rankle"),
-    std::make_pair("m_avg_Spine1", "lowerback"),
-    std::make_pair("m_avg_Spine2", "upperback"),
-    std::make_pair("m_avg_Spine3", "chest"),
-    std::make_pair("m_avg_Neck", "lowerneck"),
-    std::make_pair("m_avg_Head", "upperneck"),
-    std::make_pair("m_avg_L_Collar", "lclavicle"),
-    std::make_pair("m_avg_L_Shoulder", "lshoulder"),
-    std::make_pair("m_avg_L_Elbow", "lelbow"),
-    std::make_pair("m_avg_L_Wrist", "lwrist"),
-    std::make_pair("m_avg_R_Collar", "rclavicle"),
-    std::make_pair("m_avg_R_Shoulder", "rshoulder"),
-    std::make_pair("m_avg_R_Elbow", "relbow"),
-    std::make_pair("m_avg_R_Wrist", "rwrist")};
-}  // namespace
+//std::unordered_map<std::string, std::string> TEMP_rigMap = {
+//    std::make_pair("m_avg_Pelvis", "root"),
+//    std::make_pair("m_avg_L_Hip", "lhip"),
+//    std::make_pair("m_avg_L_Knee", "lknee"),
+//    std::make_pair("m_avg_L_Ankle", "lankle"),
+//    std::make_pair("m_avg_R_Hip", "rhip"),
+//    std::make_pair("m_avg_R_Knee", "rknee"),
+//    std::make_pair("m_avg_R_Ankle", "rankle"),
+//    std::make_pair("m_avg_Spine1", "lowerback"),
+//    std::make_pair("m_avg_Spine2", "upperback"),
+//    std::make_pair("m_avg_Spine3", "chest"),
+//    std::make_pair("m_avg_Neck", "lowerneck"),
+//    std::make_pair("m_avg_Head", "upperneck"),
+//    std::make_pair("m_avg_L_Collar", "lclavicle"),
+//    std::make_pair("m_avg_L_Shoulder", "lshoulder"),
+//    std::make_pair("m_avg_L_Elbow", "lelbow"),
+//    std::make_pair("m_avg_L_Wrist", "lwrist"),
+//    std::make_pair("m_avg_R_Collar", "rclavicle"),
+//    std::make_pair("m_avg_R_Shoulder", "rshoulder"),
+//    std::make_pair("m_avg_R_Elbow", "relbow"),
+//    std::make_pair("m_avg_R_Wrist", "rwrist")};
+//}  // namespace
 
 namespace esp {
 
@@ -1823,6 +1825,7 @@ bool ResourceManager::loadRenderAssetGeneral(const AssetInfo& info) {
        scene->parentsAsArray()) {
     nodes[parent.first()].emplace();
     nodes[parent.first()]->componentID = parent.first();
+    nodes[parent.first()]->name = fileImporter_->objectName(nodes[parent.first()]->componentID);
   }
 
   // Set transformations and names. Objects that are not part of the hierarchy
@@ -1833,7 +1836,6 @@ bool ResourceManager::loadRenderAssetGeneral(const AssetInfo& info) {
     if (Cr::Containers::Optional<esp::assets::MeshTransformNode>& node =
             nodes[transformation.first()]) {
       node->transformFromLocalToParent = transformation.second();
-      node->name = fileImporter_->objectName(node->componentID);
     }
   }
 
@@ -1920,11 +1922,16 @@ scene::SceneNode* ResourceManager::createRenderAssetInstanceGeneralPrimitive(
                  computeAbsoluteAABBs,  // compute absolute AABBs
                  staticDrawableInfo);   // a vector of static drawable info
   } else {
+    gfx::SkinData skinData{};
+    skinData.skin = skinIt->second;
+    
+    // Traverse the model joints to map their associated articulated object nodes
     std::unordered_map<int, const scene::SceneNode*> jointNodeMap{};
     mapArticulatedObjectToSkinnedModel(newNode,
                                        loadedAssetData.meshMetaData.root,
-                                       creation, skinIt->second, jointNodeMap);
+                                       creation, skinData);
 
+    // Traverse the model to instantiate meshes
     addComponentSkinned(
         loadedAssetData.meshMetaData,       // mesh metadata
         newNode,                            // parent scene node
@@ -1934,8 +1941,7 @@ scene::SceneNode* ResourceManager::createRenderAssetInstanceGeneralPrimitive(
         visNodeCache,          // a vector of scene nodes, the visNodeCache
         computeAbsoluteAABBs,  // compute absolute AABBs
         staticDrawableInfo,    // a vector of static drawable info
-        skinIt->second,
-        jointNodeMap);  // skin
+        skinData);  // skin data
   }
 
   if (computeAbsoluteAABBs) {
@@ -2931,8 +2937,7 @@ void ResourceManager::addComponentSkinned(
     std::vector<scene::SceneNode*>& visNodeCache,
     bool computeAbsoluteAABBs,
     std::vector<StaticDrawableInfo>& staticDrawableInfo,
-    std::shared_ptr<Mn::Trade::SkinData3D> skin,
-    std::unordered_map<int, const scene::SceneNode*>& jointNodeMap) {
+    gfx::SkinData& skinData) {
   // Add the object to the scene and set its transformation
   scene::SceneNode& node = parent.createChild();
   visNodeCache.push_back(&node);
@@ -2972,14 +2977,13 @@ void ResourceManager::addComponentSkinned(
       }
     }
 
-    createSkinnedDrawable(mesh,                // render mesh
-                          meshAttributeFlags,  // mesh attribute flags
-                          node,                // scene node
-                          lightSetupKey,       // lightSetup Key
-                          materialKey,         // material key
-                          skin,                // skin data
-                          jointNodeMap,        // joint-node associations
-                          drawables);          // drawable group
+    createSkinnedDrawable(mesh,               // render mesh
+                          meshAttributeFlags, // mesh attribute flags
+                          node,               // scene node
+                          lightSetupKey,      // lightSetup Key
+                          materialKey,        // material key
+                          skinData,           // skin data
+                          drawables);         // drawable group
 
     // compute the bounding box for the mesh we are adding
     if (computeAbsoluteAABBs) {
@@ -3000,8 +3004,7 @@ void ResourceManager::addComponentSkinned(
         visNodeCache,          // a vector of scene nodes, the visNodeCache
         computeAbsoluteAABBs,  // compute absolute aabbs
         staticDrawableInfo,    // a vector of static drawable info
-        skin,                  // skin data
-        jointNodeMap);         // joint-node associations
+        skinData);             // skin data
   }
 }  // addComponentSkinned
 
@@ -3009,32 +3012,40 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
     scene::SceneNode& parent,
     const MeshTransformNode& meshTransformNode,
     const RenderAssetInstanceCreationInfo& creationInfo,
-    std::shared_ptr<Mn::Trade::SkinData3D> skin,
-    std::unordered_map<int, const scene::SceneNode*>& jointNodeMap) {
-  for (std::size_t i = 0; i != skin->joints().size(); ++i) {
-    bool found = false;
-    auto jointId = skin->joints()[i];
-    const auto& gfxBoneName = meshTransformNode.name;
-    if (gfxBoneName == fileImporter_->objectName(jointId)) {
-      const auto& estimatedLinkName = ::TEMP_rigMap.find(gfxBoneName);
-      if (estimatedLinkName != TEMP_rigMap.end()) {
-        for (const int linkId : creationInfo.rig->getLinkIdsWithBase()) {
-          const std::string& linkName = creationInfo.rig->getLinkName(linkId);
-          if (estimatedLinkName->second == linkName) {
-            jointNodeMap[jointId] = &creationInfo.rig->getLink(linkId).node();
-            found = true;
-            break;
-          }
-        }
+    gfx::SkinData& skinData) {
+  scene::SceneNode& node = parent.createChild();
+  node.MagnumObject::setTransformation(
+      meshTransformNode.transformFromLocalToParent);
+  
+  // Find skin joint ID that matches the node
+  const auto& gfxBoneName = meshTransformNode.name;
+  auto jointId = std::find_if(skinData.skin->joints().begin(), skinData.skin->joints().end(), [&](int i) {
+    return gfxBoneName == fileImporter_->objectName(i);
+  });
+
+  if (jointId) {
+    // Find articulated object link ID that matches the node
+    const auto& linkIds = creationInfo.rig->getLinkIdsWithBase();
+    auto linkId = std::find_if(linkIds.begin(), linkIds.end(), [&](int i){
+      return gfxBoneName == creationInfo.rig->getLinkName(i);
+    });
+
+    // Map the articulated object link associated with the skin joint
+    if (linkId != linkIds.end()) {
+      auto linkNode = &creationInfo.rig->getLink(*linkId.base()).node();
+      skinData.jointIdToArticulatedObjectNode[*jointId] = linkNode;
+      auto& scaledNode = linkNode->createChild();
+      skinData.jointIdToScaledNode[*jointId] = &scaledNode;
+      skinData.localTransforms[*jointId] = node.absoluteTransformationMatrix();
+        scaledNode.setScaling(0.01f * Mn::Vector3{1.f,1.f,1.f}); // TODO: This scales for a specific test asset.
+      if (skinData.rootJointId == ID_UNDEFINED) {
+        skinData.rootJointId = *jointId;
       }
     }
-    if (found)
-      break;
   }
 
   for (const auto& child : meshTransformNode.children) {
-    mapArticulatedObjectToSkinnedModel(parent, child, creationInfo, skin,
-                                       jointNodeMap);
+    mapArticulatedObjectToSkinnedModel(node, child, creationInfo, skinData);
   }
 }  // mapArticulatedObjectToSkinnedModel
 
@@ -3103,8 +3114,7 @@ void ResourceManager::createSkinnedDrawable(
     scene::SceneNode& node,
     const Mn::ResourceKey& lightSetupKey,
     const Mn::ResourceKey& materialKey,
-    std::shared_ptr<Mn::Trade::SkinData3D> skin,
-    std::unordered_map<int, const scene::SceneNode*>& jointNodeMap,
+    gfx::SkinData& skinData,
     DrawableGroup* group) {
   const auto& materialDataType =
       shaderManager_.get<gfx::MaterialData>(materialKey)->type;
@@ -3120,8 +3130,7 @@ void ResourceManager::createSkinnedDrawable(
           lightSetupKey,       // lightSetup key
           materialKey,         // material key
           group,               // drawable group
-          skin,                // skin
-          jointNodeMap);       // link-node associations
+          skinData);           // link-node associations
       break;
     case gfx::MaterialDataType::Pbr:
       // TODO

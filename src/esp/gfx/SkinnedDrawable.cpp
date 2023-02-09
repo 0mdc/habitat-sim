@@ -22,6 +22,7 @@
 #include "esp/core/Logging.h"
 #include "esp/gfx/Drawable.h"
 #include "esp/scene/SceneNode.h"
+#include "esp/gfx/SkinData.h"
 
 namespace Mn = Magnum;
 
@@ -36,15 +37,13 @@ SkinnedDrawable::SkinnedDrawable(
     const Mn::ResourceKey& lightSetupKey,
     const Mn::ResourceKey& materialDataKey,
     DrawableGroup* group,
-    std::shared_ptr<Mn::Trade::SkinData3D> skin,
-    std::unordered_map<int, const scene::SceneNode*> jointNodeMap)
+    SkinData skinData)
     : Drawable{node, mesh, DrawableType::Generic, group},
       shaderManager_{shaderManager},
       lightSetup_{shaderManager.get<LightSetup>(lightSetupKey)},
       materialData_{
           shaderManager.get<MaterialData, PhongMaterialData>(materialDataKey)},
-      skin_(skin),
-      jointNodeMap_(jointNodeMap) {
+      skinData_(skinData) {
   flags_ = Mn::Shaders::PhongGL::Flag::ObjectId;
 
   /* If texture transformation is specified, enable it only if the material is
@@ -183,17 +182,25 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
     shader_->bindObjectIdTexture(*(materialData_->objectIdTexture));
   }
 
-  /* Gather joint transformations for this skin, upload and draw */
+  // Gather joint transformations
+  auto& skin = skinData_.skin;
+  auto& jointIdToArticulatedObjectNodes = skinData_.jointIdToArticulatedObjectNode;
+  auto& scaledNodes = skinData_.jointIdToScaledNode;
   Cr::Containers::Array<Mn::Matrix4> jointTransformations{
-      Cr::NoInit, skin_->joints().size()};
+      Cr::NoInit, skin->joints().size()};
+
+  // Undo root node transform
+  auto invRootTransform = jointIdToArticulatedObjectNodes[skinData_.rootJointId]->absoluteTransformationMatrix().inverted();
 
   Mn::Matrix4 lastTransform = Mn::Matrix4{Magnum::Math::IdentityInit};
   for (std::size_t i = 0; i != jointTransformations.size(); ++i) {
-    auto jointNodeIt = jointNodeMap_.find(skin_->joints()[i]);
-    if (jointNodeIt != jointNodeMap_.end()) {
+    auto jointNodeIt = scaledNodes.find(skin->joints()[i]);
+    if (jointNodeIt != scaledNodes.end()) {
       jointTransformations[i] =
+          invRootTransform *
           jointNodeIt->second->absoluteTransformationMatrix() *
-          skin_->inverseBindMatrices()[i];
+          skin->inverseBindMatrices()[i]
+          ;
       lastTransform = jointTransformations[i];
     } else {
       jointTransformations[i] = lastTransform;
@@ -206,9 +213,8 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
 
 void SkinnedDrawable::updateShader() {
   Mn::UnsignedInt lightCount = lightSetup_->size();
-  Mn::UnsignedInt jointCount = skin_->joints().size();
-  Mn::UnsignedInt perVertexJointCount =
-      4;  // TODO: Parameterize or move to constant.
+  Mn::UnsignedInt jointCount = skinData_.skin->joints().size();
+  Mn::UnsignedInt perVertexJointCount = skinData_.perVertexJointCount;
 
   if (!shader_ || shader_->lightCount() != lightCount ||
       shader_->flags() != flags_) {

@@ -23,6 +23,7 @@
 #include "esp/gfx/Drawable.h"
 #include "esp/gfx/ShaderManager.h"
 #include "esp/gfx/ShadowMapManager.h"
+#include "esp/gfx/SkinData.h"
 #include "esp/physics/configure.h"
 
 #include "esp/metadata/attributes/AttributesEnumMaps.h"
@@ -43,6 +44,7 @@ class VoxelGrid;
 namespace gfx {
 class Drawable;
 class PbrImageBasedLighting;
+struct SkinData;
 namespace replay {
 class Recorder;
 }
@@ -550,8 +552,7 @@ class ResourceManager {
       scene::SceneNode& node,
       const Mn::ResourceKey& lightSetupKey,
       const Mn::ResourceKey& materialKey,
-      std::shared_ptr<Mn::Trade::SkinData3D> skin,
-      std::unordered_map<int, const scene::SceneNode*>& jointNodeMap,
+      gfx::SkinData& skinData,
       DrawableGroup* group = nullptr);
 
   /**
@@ -853,16 +854,14 @@ class ResourceManager {
       std::vector<scene::SceneNode*>& visNodeCache,
       bool computeAbsoluteAABBs,
       std::vector<StaticDrawableInfo>& staticDrawableInfo,
-      std::shared_ptr<Mn::Trade::SkinData3D> skin,
-      std::unordered_map<int, const scene::SceneNode*>& jointNodeMap);
+      gfx::SkinData& skinData);
 
   /* TODO */
   void mapArticulatedObjectToSkinnedModel(
       scene::SceneNode& parent,
       const MeshTransformNode& meshTransformNode,
       const RenderAssetInstanceCreationInfo& creationInfo,
-      std::shared_ptr<Mn::Trade::SkinData3D> skin,
-      std::unordered_map<int, const scene::SceneNode*>& jointNodeMap);
+      gfx::SkinData& skinData);
 
   /**
    * @brief Load textures from importer into assets, and update metaData for
