@@ -311,21 +311,21 @@ int BulletPhysicsManager::addSkinnedArticulatedObjectFromURDF(
   }
 
   // attach link visual shapes
-  for (size_t urdfLinkIx = 0; urdfLinkIx < u2b->getModel()->m_links.size();
-       ++urdfLinkIx) {
-    auto urdfLink = u2b->getModel()->getLink(urdfLinkIx);
-    if (!urdfLink->m_visualArray.empty()) {
-      int bulletLinkIx =
-          u2b->cache->m_urdfLinkIndices2BulletLinkIndices[urdfLinkIx];
-      ArticulatedLink& linkObject = articulatedObject->getLink(bulletLinkIx);
-      ESP_CHECK(
-          attachLinkGeometry(&linkObject, urdfLink, drawables, lightSetup),
-          "BulletPhysicsManager::addArticulatedObjectFromURDF(): Failed to "
-          "instance render asset (attachGeometry) for link"
-              << urdfLinkIx << ".");
-      linkObject.node().computeCumulativeBB();
-    }
-  }
+  //for (size_t urdfLinkIx = 0; urdfLinkIx < u2b->getModel()->m_links.size();
+  //     ++urdfLinkIx) {
+  //  auto urdfLink = u2b->getModel()->getLink(urdfLinkIx);
+  //  if (!urdfLink->m_visualArray.empty()) {
+  //    int bulletLinkIx =
+  //        u2b->cache->m_urdfLinkIndices2BulletLinkIndices[urdfLinkIx];
+  //    ArticulatedLink& linkObject = articulatedObject->getLink(bulletLinkIx);
+  //    ESP_CHECK(
+  //        attachLinkGeometry(&linkObject, urdfLink, drawables, lightSetup),
+  //        "BulletPhysicsManager::addArticulatedObjectFromURDF(): Failed to "
+  //        "instance render asset (attachGeometry) for link"
+  //            << urdfLinkIx << ".");
+  //    linkObject.node().computeCumulativeBB();
+  //  }
+  //}
 
   // clear the cache
   u2b->cache = nullptr;
