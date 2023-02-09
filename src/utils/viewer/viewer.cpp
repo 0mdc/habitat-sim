@@ -2479,7 +2479,8 @@ void Viewer::keyPressEvent(KeyEvent& event) {
     case KeyEvent::Key::T: {
       auto aom = simulator_->getArticulatedObjectManager();
       auto ao = aom->addSkinnedArticulatedObjectFromURDF(
-          "data/amass_male.urdf", "data/human.glb", false, 1.0, 1.0, true);
+          "data/amass_male.urdf", "data/human_smpl_textured.fbx", false, 1.0,
+          1.0, true);
       ao->setTranslation(defaultAgent_->node().transformation().transformPoint(
           {0, 1.0, -1.5}));
     } break;
