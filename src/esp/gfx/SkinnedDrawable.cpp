@@ -21,23 +21,22 @@
 #include "Magnum/Trade/Trade.h"
 #include "esp/core/Logging.h"
 #include "esp/gfx/Drawable.h"
-#include "esp/scene/SceneNode.h"
 #include "esp/gfx/SkinData.h"
+#include "esp/scene/SceneNode.h"
 
 namespace Mn = Magnum;
 
 namespace esp {
 namespace gfx {
 
-SkinnedDrawable::SkinnedDrawable(
-    scene::SceneNode& node,
-    Mn::GL::Mesh* mesh,
-    Drawable::Flags& meshAttributeFlags,
-    ShaderManager& shaderManager,
-    const Mn::ResourceKey& lightSetupKey,
-    const Mn::ResourceKey& materialDataKey,
-    DrawableGroup* group,
-    SkinData skinData)
+SkinnedDrawable::SkinnedDrawable(scene::SceneNode& node,
+                                 Mn::GL::Mesh* mesh,
+                                 Drawable::Flags& meshAttributeFlags,
+                                 ShaderManager& shaderManager,
+                                 const Mn::ResourceKey& lightSetupKey,
+                                 const Mn::ResourceKey& materialDataKey,
+                                 DrawableGroup* group,
+                                 SkinData skinData)
     : Drawable{node, mesh, DrawableType::Generic, group},
       shaderManager_{shaderManager},
       lightSetup_{shaderManager.get<LightSetup>(lightSetupKey)},
@@ -184,13 +183,16 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
 
   // Gather joint transformations
   auto& skin = skinData_.skin;
-  auto& jointIdToArticulatedObjectNodes = skinData_.jointIdToArticulatedObjectNode;
+  auto& jointIdToArticulatedObjectNodes =
+      skinData_.jointIdToArticulatedObjectNode;
   auto& scaledNodes = skinData_.jointIdToScaledNode;
   Cr::Containers::Array<Mn::Matrix4> jointTransformations{
       Cr::NoInit, skin->joints().size()};
 
   // Undo root node transform
-  auto invRootTransform = jointIdToArticulatedObjectNodes[skinData_.rootJointId]->absoluteTransformationMatrix().inverted();
+  auto invRootTransform = jointIdToArticulatedObjectNodes[skinData_.rootJointId]
+                              ->absoluteTransformationMatrix()
+                              .inverted();
 
   Mn::Matrix4 lastTransform = Mn::Matrix4{Magnum::Math::IdentityInit};
   for (std::size_t i = 0; i != jointTransformations.size(); ++i) {
@@ -199,8 +201,7 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
       jointTransformations[i] =
           invRootTransform *
           jointNodeIt->second->absoluteTransformationMatrix() *
-          skin->inverseBindMatrices()[i]
-          ;
+          skin->inverseBindMatrices()[i];
       lastTransform = jointTransformations[i];
     } else {
       jointTransformations[i] = lastTransform;

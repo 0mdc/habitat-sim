@@ -92,30 +92,30 @@
 namespace Cr = Corrade;
 namespace Mn = Magnum;
 
-//namespace {
-// TODO: Either parameterize or enforce same bone names in GLTF and URDF.
-//std::unordered_map<std::string, std::string> TEMP_rigMap = {
-//    std::make_pair("m_avg_Pelvis", "root"),
-//    std::make_pair("m_avg_L_Hip", "lhip"),
-//    std::make_pair("m_avg_L_Knee", "lknee"),
-//    std::make_pair("m_avg_L_Ankle", "lankle"),
-//    std::make_pair("m_avg_R_Hip", "rhip"),
-//    std::make_pair("m_avg_R_Knee", "rknee"),
-//    std::make_pair("m_avg_R_Ankle", "rankle"),
-//    std::make_pair("m_avg_Spine1", "lowerback"),
-//    std::make_pair("m_avg_Spine2", "upperback"),
-//    std::make_pair("m_avg_Spine3", "chest"),
-//    std::make_pair("m_avg_Neck", "lowerneck"),
-//    std::make_pair("m_avg_Head", "upperneck"),
-//    std::make_pair("m_avg_L_Collar", "lclavicle"),
-//    std::make_pair("m_avg_L_Shoulder", "lshoulder"),
-//    std::make_pair("m_avg_L_Elbow", "lelbow"),
-//    std::make_pair("m_avg_L_Wrist", "lwrist"),
-//    std::make_pair("m_avg_R_Collar", "rclavicle"),
-//    std::make_pair("m_avg_R_Shoulder", "rshoulder"),
-//    std::make_pair("m_avg_R_Elbow", "relbow"),
-//    std::make_pair("m_avg_R_Wrist", "rwrist")};
-//}  // namespace
+// namespace {
+//  TODO: Either parameterize or enforce same bone names in GLTF and URDF.
+// std::unordered_map<std::string, std::string> TEMP_rigMap = {
+//     std::make_pair("m_avg_Pelvis", "root"),
+//     std::make_pair("m_avg_L_Hip", "lhip"),
+//     std::make_pair("m_avg_L_Knee", "lknee"),
+//     std::make_pair("m_avg_L_Ankle", "lankle"),
+//     std::make_pair("m_avg_R_Hip", "rhip"),
+//     std::make_pair("m_avg_R_Knee", "rknee"),
+//     std::make_pair("m_avg_R_Ankle", "rankle"),
+//     std::make_pair("m_avg_Spine1", "lowerback"),
+//     std::make_pair("m_avg_Spine2", "upperback"),
+//     std::make_pair("m_avg_Spine3", "chest"),
+//     std::make_pair("m_avg_Neck", "lowerneck"),
+//     std::make_pair("m_avg_Head", "upperneck"),
+//     std::make_pair("m_avg_L_Collar", "lclavicle"),
+//     std::make_pair("m_avg_L_Shoulder", "lshoulder"),
+//     std::make_pair("m_avg_L_Elbow", "lelbow"),
+//     std::make_pair("m_avg_L_Wrist", "lwrist"),
+//     std::make_pair("m_avg_R_Collar", "rclavicle"),
+//     std::make_pair("m_avg_R_Shoulder", "rshoulder"),
+//     std::make_pair("m_avg_R_Elbow", "relbow"),
+//     std::make_pair("m_avg_R_Wrist", "rwrist")};
+// }  // namespace
 
 namespace esp {
 
@@ -1825,7 +1825,8 @@ bool ResourceManager::loadRenderAssetGeneral(const AssetInfo& info) {
        scene->parentsAsArray()) {
     nodes[parent.first()].emplace();
     nodes[parent.first()]->componentID = parent.first();
-    nodes[parent.first()]->name = fileImporter_->objectName(nodes[parent.first()]->componentID);
+    nodes[parent.first()]->name =
+        fileImporter_->objectName(nodes[parent.first()]->componentID);
   }
 
   // Set transformations and names. Objects that are not part of the hierarchy
@@ -1924,12 +1925,12 @@ scene::SceneNode* ResourceManager::createRenderAssetInstanceGeneralPrimitive(
   } else {
     gfx::SkinData skinData{};
     skinData.skin = skinIt->second;
-    
-    // Traverse the model joints to map their associated articulated object nodes
+
+    // Traverse the model joints to map their associated articulated object
+    // nodes
     std::unordered_map<int, const scene::SceneNode*> jointNodeMap{};
-    mapArticulatedObjectToSkinnedModel(newNode,
-                                       loadedAssetData.meshMetaData.root,
-                                       creation, skinData);
+    mapArticulatedObjectToSkinnedModel(
+        newNode, loadedAssetData.meshMetaData.root, creation, skinData);
 
     // Traverse the model to instantiate meshes
     addComponentSkinned(
@@ -1941,7 +1942,7 @@ scene::SceneNode* ResourceManager::createRenderAssetInstanceGeneralPrimitive(
         visNodeCache,          // a vector of scene nodes, the visNodeCache
         computeAbsoluteAABBs,  // compute absolute AABBs
         staticDrawableInfo,    // a vector of static drawable info
-        skinData);  // skin data
+        skinData);             // skin data
   }
 
   if (computeAbsoluteAABBs) {
@@ -2977,13 +2978,13 @@ void ResourceManager::addComponentSkinned(
       }
     }
 
-    createSkinnedDrawable(mesh,               // render mesh
-                          meshAttributeFlags, // mesh attribute flags
-                          node,               // scene node
-                          lightSetupKey,      // lightSetup Key
-                          materialKey,        // material key
-                          skinData,           // skin data
-                          drawables);         // drawable group
+    createSkinnedDrawable(mesh,                // render mesh
+                          meshAttributeFlags,  // mesh attribute flags
+                          node,                // scene node
+                          lightSetupKey,       // lightSetup Key
+                          materialKey,         // material key
+                          skinData,            // skin data
+                          drawables);          // drawable group
 
     // compute the bounding box for the mesh we are adding
     if (computeAbsoluteAABBs) {
@@ -3016,17 +3017,17 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
   scene::SceneNode& node = parent.createChild();
   node.MagnumObject::setTransformation(
       meshTransformNode.transformFromLocalToParent);
-  
+
   // Find skin joint ID that matches the node
   const auto& gfxBoneName = meshTransformNode.name;
-  auto jointId = std::find_if(skinData.skin->joints().begin(), skinData.skin->joints().end(), [&](int i) {
-    return gfxBoneName == fileImporter_->objectName(i);
-  });
+  auto jointId = std::find_if(
+      skinData.skin->joints().begin(), skinData.skin->joints().end(),
+      [&](int i) { return gfxBoneName == fileImporter_->objectName(i); });
 
   if (jointId) {
     // Find articulated object link ID that matches the node
     const auto& linkIds = creationInfo.rig->getLinkIdsWithBase();
-    auto linkId = std::find_if(linkIds.begin(), linkIds.end(), [&](int i){
+    auto linkId = std::find_if(linkIds.begin(), linkIds.end(), [&](int i) {
       return gfxBoneName == creationInfo.rig->getLinkName(i);
     });
 
@@ -3037,7 +3038,10 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
       auto& scaledNode = linkNode->createChild();
       skinData.jointIdToScaledNode[*jointId] = &scaledNode;
       skinData.localTransforms[*jointId] = node.absoluteTransformationMatrix();
-        scaledNode.setScaling(0.01f * Mn::Vector3{1.f,1.f,1.f}); // TODO: This scales for a specific test asset.
+      scaledNode.setScaling(
+          0.01f *
+          Mn::Vector3{1.f, 1.f,
+                      1.f});  // TODO: This scales for a specific test asset.
       if (skinData.rootJointId == ID_UNDEFINED) {
         skinData.rootJointId = *jointId;
       }

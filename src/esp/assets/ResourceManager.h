@@ -546,14 +546,13 @@ class ResourceManager {
                       DrawableGroup* group = nullptr);
 
   /* TODO */
-  void createSkinnedDrawable(
-      Mn::GL::Mesh* mesh,
-      gfx::Drawable::Flags& meshAttributeFlags,
-      scene::SceneNode& node,
-      const Mn::ResourceKey& lightSetupKey,
-      const Mn::ResourceKey& materialKey,
-      gfx::SkinData& skinData,
-      DrawableGroup* group = nullptr);
+  void createSkinnedDrawable(Mn::GL::Mesh* mesh,
+                             gfx::Drawable::Flags& meshAttributeFlags,
+                             scene::SceneNode& node,
+                             const Mn::ResourceKey& lightSetupKey,
+                             const Mn::ResourceKey& materialKey,
+                             gfx::SkinData& skinData,
+                             DrawableGroup* group = nullptr);
 
   /**
    * @brief Remove the specified primitive mesh.
@@ -845,16 +844,15 @@ class ResourceManager {
                     std::vector<StaticDrawableInfo>& staticDrawableInfo);
 
   /* TODO */
-  void addComponentSkinned(
-      const MeshMetaData& metaData,
-      scene::SceneNode& parent,
-      const Mn::ResourceKey& lightSetupKey,
-      DrawableGroup* drawables,
-      const MeshTransformNode& meshTransformNode,
-      std::vector<scene::SceneNode*>& visNodeCache,
-      bool computeAbsoluteAABBs,
-      std::vector<StaticDrawableInfo>& staticDrawableInfo,
-      gfx::SkinData& skinData);
+  void addComponentSkinned(const MeshMetaData& metaData,
+                           scene::SceneNode& parent,
+                           const Mn::ResourceKey& lightSetupKey,
+                           DrawableGroup* drawables,
+                           const MeshTransformNode& meshTransformNode,
+                           std::vector<scene::SceneNode*>& visNodeCache,
+                           bool computeAbsoluteAABBs,
+                           std::vector<StaticDrawableInfo>& staticDrawableInfo,
+                           gfx::SkinData& skinData);
 
   /* TODO */
   void mapArticulatedObjectToSkinnedModel(

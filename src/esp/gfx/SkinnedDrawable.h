@@ -20,15 +20,14 @@ class SkinnedDrawable : public Drawable {
   //! Create a SkinnedDrawable for the given object using shader and mesh.
   //! Adds drawable to given group and uses provided texture, and
   //! color for textured buffer and color shader output respectively
-  explicit SkinnedDrawable(
-      scene::SceneNode& node,
-      Mn::GL::Mesh* mesh,
-      Drawable::Flags& meshAttributeFlags,
-      ShaderManager& shaderManager,
-      const Mn::ResourceKey& lightSetupKey,
-      const Mn::ResourceKey& materialDataKey,
-      DrawableGroup* group,
-      SkinData skinData);
+  explicit SkinnedDrawable(scene::SceneNode& node,
+                           Mn::GL::Mesh* mesh,
+                           Drawable::Flags& meshAttributeFlags,
+                           ShaderManager& shaderManager,
+                           const Mn::ResourceKey& lightSetupKey,
+                           const Mn::ResourceKey& materialDataKey,
+                           DrawableGroup* group,
+                           SkinData skinData);
 
   void setLightSetup(const Magnum::ResourceKey& lightSetupKey) override;
   static constexpr const char* SHADER_KEY_TEMPLATE = "Phong-lights={}-flags={}";

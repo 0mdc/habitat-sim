@@ -1,6 +1,6 @@
 #pragma once
 
-//TODO
+// TODO
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/Math/Color.h>
@@ -12,24 +12,22 @@
 
 #include "esp/core/Esp.h"
 
-namespace esp
-{
-namespace gfx
-{
+namespace esp {
+namespace gfx {
 struct SkinData {
-    /** @brief Pointer to loaded skin data for the instance. */
-    std::shared_ptr<Magnum::Trade::SkinData3D> skin{};
-    /** @brief Map between skin joint IDs and articulated object nodes. */
-    std::unordered_map<int, const scene::SceneNode*> jointIdToArticulatedObjectNode{};
-    /** @brief Map between skin joint IDs and scaled articulated object nodes. */
-    std::unordered_map<int, const scene::SceneNode*> jointIdToScaledNode{};
-    /** @brief Skin joint ID of the root node. */
-    int rootJointId{ID_UNDEFINED};
-    /** @brief TODO */
-    int perVertexJointCount{4};
+  /** @brief Pointer to loaded skin data for the instance. */
+  std::shared_ptr<Magnum::Trade::SkinData3D> skin{};
+  /** @brief Map between skin joint IDs and articulated object nodes. */
+  std::unordered_map<int, const scene::SceneNode*>
+      jointIdToArticulatedObjectNode{};
+  /** @brief Map between skin joint IDs and scaled articulated object nodes. */
+  std::unordered_map<int, const scene::SceneNode*> jointIdToScaledNode{};
+  /** @brief Skin joint ID of the root node. */
+  int rootJointId{ID_UNDEFINED};
+  /** @brief TODO */
+  int perVertexJointCount{4};
 
-    std::unordered_map<int, Magnum::Matrix4> localTransforms;
-    
+  std::unordered_map<int, Magnum::Matrix4> localTransforms;
 };
-}
-}
+}  // namespace gfx
+}  // namespace esp
