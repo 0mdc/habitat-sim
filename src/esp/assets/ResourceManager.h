@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -91,6 +92,11 @@ struct MeshData;
 struct RenderAssetInstanceCreationInfo;
 // used for shadertype specification
 using metadata::attributes::ObjectInstanceShaderType;
+
+
+struct LoadedSkinData {
+    std::unordered_map<std::string, int> boneJointMap;
+};
 
 /**
  * @brief Singleton class responsible for
@@ -859,7 +865,8 @@ class ResourceManager {
       scene::SceneNode& parent,
       const MeshTransformNode& meshTransformNode,
       const RenderAssetInstanceCreationInfo& creationInfo,
-      gfx::SkinData& skinData);
+      gfx::SkinData& skinData,
+      std::shared_ptr<LoadedSkinData> loadedSkinData);
 
   /**
    * @brief Load textures from importer into assets, and update metaData for
@@ -1253,6 +1260,9 @@ class ResourceManager {
    * @brief The skin data for loaded assets.
    */
   std::map<int, std::shared_ptr<Mn::Trade::SkinData3D>> skins_;
+
+
+  std::map<int, std::shared_ptr<LoadedSkinData>> loadedSkinData_;
 
   /**
    * @brief Storage for precomputed voxel grids. Useful for when multiple

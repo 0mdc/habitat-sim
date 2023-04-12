@@ -1925,12 +1925,13 @@ scene::SceneNode* ResourceManager::createRenderAssetInstanceGeneralPrimitive(
   } else {
     gfx::SkinData skinData{};
     skinData.skin = skinIt->second;
+    auto loadedSkinData = loadedSkinData_.find(loadedAssetData.meshMetaData.skinIndex.first)->second;
 
     // Traverse the model joints to map their associated articulated object
     // nodes
     std::unordered_map<int, const scene::SceneNode*> jointNodeMap{};
     mapArticulatedObjectToSkinnedModel(
-        newNode, loadedAssetData.meshMetaData.root, creation, skinData);
+        newNode, loadedAssetData.meshMetaData.root, creation, skinData, loadedSkinData);
 
     // Traverse the model to instantiate meshes
     addComponentSkinned(
@@ -2503,20 +2504,27 @@ void ResourceManager::loadMeshes(Importer& importer,
 
 void ResourceManager::loadSkins(Importer& importer,
                                 LoadedAssetData& loadedAssetData) {
+  if (importer.skin3DCount() == 0) return;
+  
   int skinStart = nextSkinID_;
   int skinEnd = skinStart + importer.skin3DCount() - 1;
   nextSkinID_ = skinEnd + 1;
   loadedAssetData.meshMetaData.setSkinIndices(skinStart, skinEnd);
 
   for (int iSkin = 0; iSkin < importer.skin3DCount(); ++iSkin) {
-    auto currentSkinID = skinStart + iSkin;
-
-    Cr::Containers::Optional<Mn::Trade::SkinData3D> skin =
-        importer.skin3D(currentSkinID);
+    Cr::Containers::Optional<Mn::Trade::SkinData3D> skin = importer.skin3D(iSkin);
     CORRADE_INTERNAL_ASSERT(skin);
     auto skinPtr = std::make_shared<Mn::Trade::SkinData3D>(std::move(*skin));
 
+    // Cache bone names for later association with instance transforms
+    auto loadedSkinData = std::make_shared<LoadedSkinData>();
+    for (auto jointIt : skinPtr->joints()) {
+      const auto gfxBoneName = fileImporter_->objectName(jointIt);
+      loadedSkinData->boneJointMap[gfxBoneName] = jointIt;
+    }
+
     skins_.emplace(skinStart + iSkin, std::move(skinPtr));
+    loadedSkinData_.emplace(skinStart + iSkin, std::move(loadedSkinData));
   }
 }  // ResourceManager::loadSkins
 
@@ -3013,18 +3021,18 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
     scene::SceneNode& parent,
     const MeshTransformNode& meshTransformNode,
     const RenderAssetInstanceCreationInfo& creationInfo,
-    gfx::SkinData& skinData) {
+    gfx::SkinData& skinData,
+    std::shared_ptr<LoadedSkinData> loadedSkinData) {
   scene::SceneNode& node = parent.createChild();
   node.MagnumObject::setTransformation(
       meshTransformNode.transformFromLocalToParent);
 
   // Find skin joint ID that matches the node
   const auto& gfxBoneName = meshTransformNode.name;
-  auto jointId = std::find_if(
-      skinData.skin->joints().begin(), skinData.skin->joints().end(),
-      [&](int i) { return gfxBoneName == fileImporter_->objectName(i); });
+  auto jointIt = loadedSkinData->boneJointMap.find(gfxBoneName);
 
-  if (jointId) {
+  if (jointIt != loadedSkinData->boneJointMap.end()) {
+    int jointId = jointIt->second;
     // Find articulated object link ID that matches the node
     const auto& linkIds = creationInfo.rig->getLinkIdsWithBase();
     auto linkId = std::find_if(linkIds.begin(), linkIds.end(), [&](int i) {
@@ -3034,22 +3042,22 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
     // Map the articulated object link associated with the skin joint
     if (linkId != linkIds.end()) {
       auto linkNode = &creationInfo.rig->getLink(*linkId.base()).node();
-      skinData.jointIdToArticulatedObjectNode[*jointId] = linkNode;
+      skinData.jointIdToArticulatedObjectNode[jointId] = linkNode;
       auto& scaledNode = linkNode->createChild();
-      skinData.jointIdToScaledNode[*jointId] = &scaledNode;
-      skinData.localTransforms[*jointId] = node.absoluteTransformationMatrix();
-      scaledNode.setScaling(
-          0.01f *
-          Mn::Vector3{1.f, 1.f,
-                      1.f});  // TODO: This scales for a specific test asset.
+      skinData.jointIdToScaledNode[jointId] = &scaledNode;
+      skinData.localTransforms[jointId] = node.absoluteTransformationMatrix();
+      //scaledNode.setScaling(
+      //    0.01f *
+      //    Mn::Vector3{1.f, 1.f,
+      //                1.f});  // TODO: This scales for a specific test asset.
       if (skinData.rootJointId == ID_UNDEFINED) {
-        skinData.rootJointId = *jointId;
+        skinData.rootJointId = jointId;
       }
     }
   }
 
   for (const auto& child : meshTransformNode.children) {
-    mapArticulatedObjectToSkinnedModel(node, child, creationInfo, skinData);
+    mapArticulatedObjectToSkinnedModel(node, child, creationInfo, skinData, loadedSkinData);
   }
 }  // mapArticulatedObjectToSkinnedModel
 
