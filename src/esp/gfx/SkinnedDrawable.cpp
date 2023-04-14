@@ -189,7 +189,7 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
   Cr::Containers::Array<Mn::Matrix4> jointTransformations{
       Cr::NoInit, skin->joints().size()};
 
-  // Undo root node transform
+  // Undo root node transform so that the model origin matches the root articulated object link.
   auto invRootTransform = jointIdToArticulatedObjectNodes[skinData_.rootJointId]
                               ->absoluteTransformationMatrix()
                               .inverted();
@@ -204,6 +204,7 @@ void SkinnedDrawable::draw(const Mn::Matrix4& transformationMatrix,
           skin->inverseBindMatrices()[i];
       lastTransform = jointTransformations[i];
     } else {
+      // Joint not found - use last transform.
       jointTransformations[i] = lastTransform;
     }
   }

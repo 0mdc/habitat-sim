@@ -20,6 +20,7 @@
 #include <Corrade/Containers/EnumSet.h>
 
 #include "Asset.h"
+#include "Magnum/Magnum.h"
 #include "MeshMetaData.h"
 #include "esp/gfx/Drawable.h"
 #include "esp/gfx/ShaderManager.h"
@@ -865,6 +866,7 @@ class ResourceManager {
       scene::SceneNode& parent,
       const MeshTransformNode& meshTransformNode,
       const RenderAssetInstanceCreationInfo& creationInfo,
+      Mn::Vector3 scale,
       gfx::SkinData& skinData,
       std::shared_ptr<LoadedSkinData> loadedSkinData);
 

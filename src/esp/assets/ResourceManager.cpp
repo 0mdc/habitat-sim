@@ -52,6 +52,7 @@
 #include <memory>
 #include <utility>
 
+#include "Magnum/Magnum.h"
 #include "esp/assets/BaseMesh.h"
 #include "esp/assets/CollisionMeshData.h"
 #include "esp/assets/GenericSemanticMeshData.h"
@@ -1931,7 +1932,7 @@ scene::SceneNode* ResourceManager::createRenderAssetInstanceGeneralPrimitive(
     // nodes
     std::unordered_map<int, const scene::SceneNode*> jointNodeMap{};
     mapArticulatedObjectToSkinnedModel(
-        newNode, loadedAssetData.meshMetaData.root, creation, skinData, loadedSkinData);
+        newNode, loadedAssetData.meshMetaData.root, creation, newNode.scaling(), skinData, loadedSkinData);
 
     // Traverse the model to instantiate meshes
     addComponentSkinned(
@@ -3021,11 +3022,10 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
     scene::SceneNode& parent,
     const MeshTransformNode& meshTransformNode,
     const RenderAssetInstanceCreationInfo& creationInfo,
+    Mn::Vector3 cumulativeScale,
     gfx::SkinData& skinData,
     std::shared_ptr<LoadedSkinData> loadedSkinData) {
-  scene::SceneNode& node = parent.createChild();
-  node.MagnumObject::setTransformation(
-      meshTransformNode.transformFromLocalToParent);
+  cumulativeScale /= meshTransformNode.transformFromLocalToParent.scaling();
 
   // Find skin joint ID that matches the node
   const auto& gfxBoneName = meshTransformNode.name;
@@ -3041,15 +3041,20 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
 
     // Map the articulated object link associated with the skin joint
     if (linkId != linkIds.end()) {
-      auto linkNode = &creationInfo.rig->getLink(*linkId.base()).node();
-      skinData.jointIdToArticulatedObjectNode[jointId] = linkNode;
-      auto& scaledNode = linkNode->createChild();
+      auto articulatedObjectNode = &creationInfo.rig->getLink(*linkId.base()).node();
+      skinData.jointIdToArticulatedObjectNode[jointId] = articulatedObjectNode;
+
+      // Articulated object nodes aren't scaled.
+      // Create a child node that carries the scale component.
+      // This node will be used for rendering.
+      auto& scaledNode = articulatedObjectNode->createChild();
+      scaledNode.setScaling(cumulativeScale);
+
+      // Mapping
       skinData.jointIdToScaledNode[jointId] = &scaledNode;
-      skinData.localTransforms[jointId] = node.absoluteTransformationMatrix();
-      //scaledNode.setScaling(
-      //    0.01f *
-      //    Mn::Vector3{1.f, 1.f,
-      //                1.f});  // TODO: This scales for a specific test asset.
+      skinData.localTransforms[jointId] = meshTransformNode.transformFromLocalToParent;
+
+      // First node found is the root
       if (skinData.rootJointId == ID_UNDEFINED) {
         skinData.rootJointId = jointId;
       }
@@ -3057,7 +3062,7 @@ void ResourceManager::mapArticulatedObjectToSkinnedModel(
   }
 
   for (const auto& child : meshTransformNode.children) {
-    mapArticulatedObjectToSkinnedModel(node, child, creationInfo, skinData, loadedSkinData);
+    mapArticulatedObjectToSkinnedModel(parent, child, creationInfo, cumulativeScale, skinData, loadedSkinData);
   }
 }  // mapArticulatedObjectToSkinnedModel
 
