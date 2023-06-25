@@ -3,11 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "Corrade/Containers/EnumSet.h"
-#include "Corrade/Utility/Assert.h"
-#include "Magnum/DebugTools/Screenshot.h"
 #include "Magnum/GL/Context.h"
-#include "Magnum/Magnum.h"
-#include "Magnum/Trade/AbstractImageConverter.h"
 #include "configure.h"
 
 #include "esp/gfx/replay/Recorder.h"
@@ -47,8 +43,9 @@ typedef Corrade::Containers::EnumSet<TestFlag> TestFlags;
 struct BatchReplayRendererTest : Cr::TestSuite::Tester {
   explicit BatchReplayRendererTest();
 
-  void testIntegration();
   void testUnproject();
+  void testIntegration();
+  void testDeletion();
 
   const Magnum::Float maxThreshold = 255.f;
   const Magnum::Float meanThreshold = 0.75f;
@@ -155,12 +152,32 @@ const struct {
      }},
 };
 
+const struct {
+  const char* name;
+  Cr::Containers::Pointer<esp::sim::AbstractReplayRenderer> (*create)(
+      const ReplayRendererConfiguration& configuration);
+} TestDeletionData[]{
+    {"classic",
+     [](const ReplayRendererConfiguration& configuration) {
+       return Cr::Containers::Pointer<esp::sim::AbstractReplayRenderer>{
+           new esp::sim::ClassicReplayRenderer{configuration}};
+     }},
+    {"batch",
+     [](const ReplayRendererConfiguration& configuration) {
+       return Cr::Containers::Pointer<esp::sim::AbstractReplayRenderer>{
+           new esp::sim::BatchReplayRenderer{configuration}};
+     }},
+};
+
 BatchReplayRendererTest::BatchReplayRendererTest() {
   addInstancedTests({&BatchReplayRendererTest::testUnproject},
                     Cr::Containers::arraySize(TestUnprojectData));
 
   addInstancedTests({&BatchReplayRendererTest::testIntegration},
                     Cr::Containers::arraySize(TestIntegrationData));
+
+  addInstancedTests({&BatchReplayRendererTest::testDeletion},
+                    Cr::Containers::arraySize(TestDeletionData));
 }  // ctor
 
 // test recording and playback through the simulator interface
@@ -220,7 +237,7 @@ void BatchReplayRendererTest::testIntegration() {
 
   const auto sensorSpecs = getDefaultSensorSpecs(data.testFlags);
 
-  const std::string vangogh = Cr::Utility::Path::join(
+  const std::string sceneName = Cr::Utility::Path::join(
       SCENE_DATASETS, "habitat-test-scenes/van-gogh-room.glb");
   constexpr int numEnvs = 4;
   const std::string userPrefix = "sensor_";
@@ -229,7 +246,7 @@ void BatchReplayRendererTest::testIntegration() {
   std::vector<std::string> serKeyframes;
   for (int envIndex = 0; envIndex < numEnvs; envIndex++) {
     SimulatorConfiguration simConfig{};
-    simConfig.activeSceneName = vangogh;
+    simConfig.activeSceneName = sceneName;
     simConfig.enableGfxReplaySave = true;
     simConfig.createRenderer = false;
 
@@ -353,6 +370,56 @@ void BatchReplayRendererTest::testIntegration() {
   }
   // Check that the context is properly deleted
   CORRADE_VERIFY(!Mn::GL::Context::hasCurrent());
+}
+
+void BatchReplayRendererTest::testDeletion() {
+  auto&& data = TestIntegrationData[testCaseInstanceId()];
+  setTestCaseDescription(data.name);
+
+  const std::string boxFile =
+      Cr::Utility::Path::join(TEST_ASSETS, "objects/transform_box.glb");
+  const esp::assets::AssetInfo assetInfo =
+      esp::assets::AssetInfo::fromPath(boxFile);
+  const esp::assets::RenderAssetInstanceCreationInfo creationInfo(
+      boxFile, Corrade::Containers::NullOpt, {}, "");
+
+  std::vector<std::string> serKeyframes;
+  {
+    SimulatorConfiguration simConfig{};
+    simConfig.enableGfxReplaySave = true;
+    simConfig.createRenderer = false;
+    auto sim = Simulator::create_unique(simConfig);
+    auto& recorder = *sim->getGfxReplayManager()->getRecorder();
+
+    // Frame 1
+    auto nodeX = sim->loadAndCreateRenderAssetInstance(assetInfo, creationInfo);
+    auto nodeY = sim->loadAndCreateRenderAssetInstance(assetInfo, creationInfo);
+    auto nodeZ = sim->loadAndCreateRenderAssetInstance(assetInfo, creationInfo);
+    serKeyframes.emplace_back(recorder.extractKeyframe());
+
+    // Frame 2
+    nodeX->setTransformation(
+        Mn::Matrix4::translation(Mn::Vector3{1.0f, 0.0f, 0.0f}));
+    nodeY->setTransformation(
+        Mn::Matrix4::translation(Mn::Vector3{0.0f, 1.0f, 0.0f}));
+    serKeyframes.emplace_back(recorder.extractKeyframe());
+
+    // Frame 3
+    delete nodeX;
+    serKeyframes.emplace_back(recorder.extractKeyframe());
+
+    // Frame 4
+    delete nodeY;
+    nodeZ->setTransformation(
+        Mn::Matrix4::translation(Mn::Vector3{0.0f, 0.0f, 1.0f}));
+    serKeyframes.emplace_back(recorder.extractKeyframe());
+
+    // Frame 5
+    delete nodeZ;
+    auto nodeW = sim->loadAndCreateRenderAssetInstance(assetInfo, creationInfo);
+    delete nodeW;
+    serKeyframes.emplace_back(recorder.extractKeyframe());
+  }
 }
 
 }  // namespace
