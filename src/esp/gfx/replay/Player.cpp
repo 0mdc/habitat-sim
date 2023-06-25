@@ -171,7 +171,9 @@ void Player::close() {
 }
 
 void Player::clearFrame() {
-  // implementation_ becomes null during destruction.
+  /* In a moved-out Player the implementation_ shared_ptr becomes null for
+     some reason (why, C++?), and since clearFrame() is called on destruction
+     accessing it will blow up. So it's a destructive move, yes. */
   if (implementation_)
     implementation_->deleteAssetInstances(createdInstances_);
   createdInstances_.clear();
@@ -223,7 +225,6 @@ void Player::applyKeyframe(const Keyframe& keyframe) {
     creationInfos_[instanceKey] = adjustedCreation;
   }
 
-  // Note: We don't expect to keep this abstraction layer.
   bool isClassicReplayRenderer =
       dynamic_cast<AbstractSceneGraphPlayerImplementation*>(
           implementation_.get()) != nullptr;
