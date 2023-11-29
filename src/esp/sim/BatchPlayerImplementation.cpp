@@ -42,7 +42,7 @@ namespace sim {
 BatchPlayerImplementation::BatchPlayerImplementation(
     gfx_batch::Renderer& renderer,
     Mn::UnsignedInt sceneId)
-    : renderer_{renderer}, sceneId_{sceneId} {}
+    : renderer_{renderer}, sceneId_{sceneId}, rigMap_(), rigNodes_() {}
 
 gfx::replay::NodeHandle
 BatchPlayerImplementation::loadAndCreateRenderAssetInstance(
@@ -71,7 +71,7 @@ BatchPlayerImplementation::loadAndCreateRenderAssetInstance(
     CORRADE_INTERNAL_ASSERT(renderer_.hasNodeHierarchy(creation.filepath));
   }
 
-  return reinterpret_cast<gfx::replay::NodeHandle>(
+  auto newNode = reinterpret_cast<gfx::replay::NodeHandle>(
       renderer_.addNodeHierarchy(
           sceneId_, creation.filepath,
           /* Baking the initial scaling and coordinate frame into the
@@ -85,6 +85,13 @@ BatchPlayerImplementation::loadAndCreateRenderAssetInstance(
       /* Returning incremented by 1 because 0 (nullptr) is treated as an
          error */
       + 1);
+
+  // Associate the node with the rig ID
+  if (creation.rigId != ID_UNDEFINED) {
+    rigNodes_[creation.rigId] = newNode;
+  }
+
+  return newNode;
 }
 
 void BatchPlayerImplementation::deleteAssetInstance(
@@ -98,6 +105,8 @@ void BatchPlayerImplementation::deleteAssetInstances(
     const std::unordered_map<gfx::replay::RenderAssetInstanceKey,
                              gfx::replay::NodeHandle>&) {
   renderer_.clear(sceneId_);
+  rigMap_.clear();
+  rigNodes_.clear();
 }
 
 void BatchPlayerImplementation::setNodeTransform(
@@ -167,19 +176,42 @@ void BatchPlayerImplementation::changeLightSetup(
 }
 
 void BatchPlayerImplementation::createRigInstance(
-    int,
-    const std::vector<std::string>&) {
-  // Not implemented.
+    int id, // TODO: At the TODO above, record the SceneNode in a map with this ID.
+            //       The scene node will then be used to fetch the memory location to write joint transforms into.
+    const std::vector<std::string>& boneNames) {
+
+  // 1. Ask the batch renderer to create a new rig and return the id
+  // 2. Map the habitat id to the batch renderer id here
+  // 3. TODO: What to do with bone names?
+  //    Typically, this is because URDF links need to be matched to GLTF bones.
+  std::size_t nodeId = reinterpret_cast<std::size_t>(rigNodes_[id]); // TODO Make safe
+
+  std::size_t rendererId = renderer_.addRig(sceneId_, boneNames.size(), nodeId);
+  rigMap_[id] = rendererId; // TODO Make safe
 }
 
-void BatchPlayerImplementation::deleteRigInstance(int) {
-  // Not implemented.
+void BatchPlayerImplementation::deleteRigInstance(int id) {
+  // TODO
+  rigMap_.erase(id);
+  rigNodes_.erase(id);
 }
 
 void BatchPlayerImplementation::setRigPose(
-    int,
-    const std::vector<gfx::replay::Transform>&) {
-  // Not implemented.
+    int id,
+    const std::vector<gfx::replay::Transform>& pose) {
+  // Using the habitat-magnum map, find the batch renderer rig id
+  // Set the pose
+  const std::size_t rendererId = rigMap_[id]; // TODO Make safe
+  auto& rendererPose = renderer_.rigPoses(sceneId_)[rendererId]; // TODO Make safe
+  
+  CORRADE_INTERNAL_ASSERT(rendererPose.size() == pose.size());
+
+  for (int i = 0; i < pose.size(); ++i) {
+    // TODO: We can probably avoid these conversions
+    const auto rot = pose[i].rotation.toMatrix();
+    Mn::Matrix4 boneTransform = Mn::Matrix4::from(rot, pose[i].translation);
+    rendererPose[i] = std::move(boneTransform);
+  }
 }
 }  // namespace sim
 }  // namespace esp

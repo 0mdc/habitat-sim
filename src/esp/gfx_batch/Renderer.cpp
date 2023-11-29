@@ -41,6 +41,7 @@
 #include <Magnum/Trade/MeshData.h>
 #include <Magnum/Trade/PhongMaterialData.h>
 #include <Magnum/Trade/SceneData.h>
+#include <Magnum/Trade/SkinData.h>
 #include <Magnum/Trade/TextureData.h>
 #include <esp/gfx_batch/DepthUnprojection.h>
 #include <unordered_map>
@@ -100,6 +101,8 @@ struct MeshView {
   Mn::Int materialId; /* is never -1 tho */
   // TODO also parent, when we are able to fetch the whole hierarchy for a
   //  particular root object name instead of having the hierarchy flattened
+  Mn::UnsignedInt perInstanceJointCount;
+  Mn::UnsignedInt jointOffset;
   Mn::Matrix4 transformation;
 };
 
@@ -127,6 +130,7 @@ struct DrawBatch {
   Cr::Containers::Reference<Mn::Shaders::PhongGL> shader;
   Mn::UnsignedInt meshId;
   Mn::UnsignedInt textureId;
+  //Mn::UnsignedInt skinId; // TODO
   /* Here will eventually also be shader ID and other things like mask etc */
 };
 
@@ -188,16 +192,27 @@ struct Scene {
   Cr::Containers::Array<Mn::UnsignedInt> drawBatchOffsets;
   Cr::Containers::Array<DrawCommand> drawCommandsSorted;
 
+  /* Absolute transformation the nodes of all the rigs. */
+  // TODO: Array of rig structures is probably more readable.
+  Cr::Containers::Array<Cr::Containers::Array<Mn::Matrix4>> rigPoses;
+  Cr::Containers::Array<Mn::Matrix4> joints; // TODO: Probably better than array<array<>> above
+
+  /* Rig pose buffer to avoid dynamic allocation in the render loop. */
+  // TODO: Probably not needed
+  Cr::Containers::Array<Cr::Containers::Array<Mn::Matrix4>> transformedRigPoses;
+
   /* Updated every frame */
   // TODO make these two global, uploaded just once (plus accounting for
   //  padding)
   Mn::GL::Buffer transformationUniform;
   Mn::GL::Buffer lightUniform;
+  Mn::GL::Buffer drawUniform;
+  Mn::GL::Buffer textureTransformationUniform;
+  Mn::GL::Buffer jointUniform;
+
   /* Updated at most once a frame if dirty is true */
   // TODO split for lights vs nodes?
   bool dirty = false;
-  Mn::GL::Buffer drawUniform;
-  Mn::GL::Buffer textureTransformationUniform;
 };
 
 struct TextureTransformation {
@@ -238,6 +253,12 @@ struct Renderer::State {
   /* Contains texture transform and layer for each material. Used by add() to
      populate the draw list. */
   Cr::Containers::Array<TextureTransformation> materialTextureTransformations;
+
+  /* Filled upon addFile() */
+  Cr::Containers::Array<Mn::Trade::SkinData3D> skins;
+
+  /* Filled upon addFile() */
+  Cr::Containers::Array<std::unordered_map<Cr::Containers::String, Mn::UnsignedInt>> jointNameIdMap;
 
   /* Mesh views (mesh ID, index byte offset and count), material IDs and
      initial transformations for draws. Used by add() to populate the draw
@@ -391,6 +412,8 @@ bool Renderer::addFile(const Cr::Containers::StringView filename,
     types->addValue("meshViewIndexOffset", "UnsignedInt");
     types->addValue("meshViewIndexCount", "UnsignedInt");
     types->addValue("meshViewMaterial", "Int");
+    //types->addValue("meshViewPerInstanceJointCount", "UnsignedInt"); <~~ TODO: Probably will never be in composite files.
+    //types->addValue("meshViewJointOffset", "UnsignedInt");
   }
 
   /* Basis options. Don't want to bother with all platform variations right
@@ -552,8 +575,33 @@ bool Renderer::addFile(const Cr::Containers::StringView filename,
     if (mesh->hasAttribute(Mn::Trade::MeshAttribute::Color))
       flags |= Mn::Shaders::PhongGL::Flag::VertexColor;
 
-    arrayAppend(state_->meshes, Cr::InPlaceInit, flags,
+    arrayAppend(state_->meshes, Cr::InPlaceInit , flags,
                 Mn::MeshTools::compile(*mesh));
+
+    //Cr::Containers::Pair<Mn::UnsignedInt, Mn::UnsignedInt> meshPerVertexJointCount =
+    //  Mn::MeshTools::compiledPerVertexJointCount(meshData)
+    // Gets: joint count, max joint count per vertex
+  }
+
+  /* Import all skins */
+  for (Mn::UnsignedInt i = 0, iMax = importer->skin3DCount(); i != iMax; ++i) {
+    Cr::Containers::Optional<Mn::Trade::SkinData3D> skin = importer->skin3D(i);
+    if (!skin) {
+      Mn::Error{} << "Renderer::addFile(): can't import skin" << i << "of"
+                  << filename;
+      return {};
+    }
+
+    if (skin->joints().size() > 0) {
+      arrayAppend(state_->skins, Cr::InPlaceInit, skin);
+
+      /* Map bone names to joint indices so that poses can be driven from bone names. */
+      for (auto jointIt : skin->joints()) {
+        const auto jointName = importer->objectName(jointIt);
+        auto& jointNameIdMap = arrayAppend(state_->jointNameIdMap, Cr::InPlaceInit);
+        jointNameIdMap[jointName] = jointIt;
+      }
+    }
   }
 
   /* Immutable material data. Save texture IDs, transformations and layers to a
@@ -647,6 +695,8 @@ bool Renderer::addFile(const Cr::Containers::StringView filename,
     view.indexOffsetInBytes = 0;
     view.indexCount = state_->meshes[meshOffset].second().count();
     view.materialId = 0;
+    view.perInstanceJointCount = 0;
+    view.indexCount = 0;
 
     /* Adding a scene-less file as a whole should be explicitly requested to
        avoid accidents */
@@ -684,7 +734,7 @@ bool Renderer::addFile(const Cr::Containers::StringView filename,
     Cr::Utility::copy(
         scene->field<Mn::UnsignedInt>(Mn::Trade::SceneField::Mesh),
         meshViews.slice(&MeshView::meshId));
-
+    
     /* Add mesh offset to all mesh IDs */
     for (Mn::UnsignedInt& meshId : meshViews.slice(&MeshView::meshId))
       meshId += meshOffset;
@@ -744,6 +794,16 @@ bool Renderer::addFile(const Cr::Containers::StringView filename,
         materialId = 0;
       else
         materialId += materialOffset;
+    }
+
+    /* Map joints. TODO */
+    for (MeshView& view : meshViews) {
+      view.jointOffset = 0;
+      view.perInstanceJointCount = state_->skins[view.meshId].joints().size();
+    }
+    for (Mn::UnsignedInt& perInstanceJointCount : meshViews.slice(&MeshView::perInstanceJointCount)) {
+      
+      perInstanceJointCount = 0;
     }
 
     /* Unless the file is treated as a whole, root scene nodes are used as
@@ -834,8 +894,8 @@ bool Renderer::addFile(const Cr::Containers::StringView filename,
   //  count grows further
   for (Mn::Shaders::PhongGL::Flags extraFlags :
        {{}, Mn::Shaders::PhongGL::Flag::VertexColor}) {
-    Mn::Shaders::PhongGL::Flags shaderFlags =
-        extraFlags | Mn::Shaders::PhongGL::Flag::MultiDraw |
+    Mn::Shaders::PhongGL::Flags shaderFlags = extraFlags |
+        Mn::Shaders::PhongGL::Flag::MultiDraw |
         Mn::Shaders::PhongGL::Flag::UniformBuffers |
         Mn::Shaders::PhongGL::Flag::NoSpecular |
         Mn::Shaders::PhongGL::Flag::LightCulling;
@@ -939,7 +999,9 @@ std::size_t Renderer::addNodeHierarchy(const Mn::UnsignedInt sceneId,
     arrayAppend(scene.drawBatchIds, batchId);
     arrayAppend(scene.transformationIds, id);
     arrayAppend(scene.draws, Cr::InPlaceInit)
-        .setMaterialId(meshView.materialId);
+        .setMaterialId(meshView.materialId)
+        .setPerInstanceJointCount(meshView.perInstanceJointCount)
+        .setJointOffset(meshView.jointOffset);
     arrayAppend(scene.textureTransformations, Cr::InPlaceInit)
         .setTextureMatrix(
             state_->materialTextureTransformations[meshView.materialId]
@@ -984,6 +1046,28 @@ std::size_t Renderer::addEmptyNode(const Mn::UnsignedInt sceneId) {
 
   /* Not marking the dirty bit as nothing changed rendering-wise, and the
      transformations are processed every frame anyway */
+  return id;
+}
+
+std::size_t Renderer::addRig(const Mn::UnsignedInt sceneId, const Mn::UnsignedInt boneCount, std::size_t node) {
+  CORRADE_ASSERT(sceneId < state_->scenes.size(),
+                 "Renderer::addRig(): index"
+                     << sceneId << "out of range for" << state_->scenes.size()
+                     << "scenes",
+                 {});
+  // TODO: Bone mapping needs to be done here.
+
+  // TODO: The node can be used to identify which instance to map to the pose
+
+
+
+
+  Scene& scene = state_->scenes[sceneId];
+  const std::size_t id = scene.rigPoses.size();
+  Mn::Containers::Array<Mn::Matrix4> pose(boneCount);
+  arrayAppend(scene.rigPoses, std::move(pose));
+  arrayAppend(scene.transformedRigPoses, Mn::Containers::Array<Mn::Matrix4>(boneCount));
+
   return id;
 }
 
@@ -1035,6 +1119,8 @@ void Renderer::clear(const Mn::UnsignedInt sceneId) {
   arrayResize(scene.drawsSorted, 0);
   arrayResize(scene.transformationIdsSorted, 0);
   arrayResize(scene.drawCommandsSorted, 0);
+  arrayResize(scene.rigPoses, 0);
+  arrayResize(scene.transformedRigPoses, 0);
 
   /* There's nothing in the scene, so there's no dirty state to process */
   scene.dirty = false;
@@ -1289,6 +1375,11 @@ void Renderer::draw(Mn::GL::AbstractFramebuffer& framebuffer) {
     if (!scene.lights.isEmpty())
       scene.lightUniform.setData(
           state_->absoluteLights.prefix(scene.lights.size()));
+
+    /* Upload joint uniforms. */
+    if (!scene.joints.isEmpty())
+      scene.jointUniform.setData(
+        scene.rigPoses[0]); //  TODO: Somehow figure out how to index the right pose here
   }
 
   /* Remember the original viewport to set it back to where it was after.
@@ -1317,7 +1408,8 @@ void Renderer::draw(Mn::GL::AbstractFramebuffer& framebuffer) {
                                 sizeof(ProjectionPadded))
           .bindTransformationBuffer(scene.transformationUniform)
           .bindLightBuffer(scene.lightUniform)
-          .bindDrawBuffer(scene.drawUniform);
+          .bindDrawBuffer(scene.drawUniform)
+          .bindJointBuffer(scene.jointUniform);
       if (!(state_->flags & RendererFlag::NoTextures))
         state_->shaders.begin()->second.bindTextureTransformationBuffer(
             scene.textureTransformationUniform);
@@ -1344,7 +1436,24 @@ void Renderer::draw(Mn::GL::AbstractFramebuffer& framebuffer) {
             scene.drawCommandsSorted.slice(drawBatchOffset,
                                            nextDrawBatchOffset);
 
+        
+        // TODO: Get root transform of the rig. Hidden somewhere in the transform array
+        // TODO: Skinned meshes cannot be batched the same way unless we handle it in the shader
+        
+        //Cr::Containers::ArrayView<Mn::Matrix4> jointMatrices;
+        //if (drawBatch.skinId > -1) {
+        //  jointMatrices = scene.transformedRigPoses[drawBatch.skinId /*TODO RIGID not SKINID*/];
+        //  Cr::Containers::ArrayView<Mn::Matrix4> inputPoses = scene.rigPoses[drawBatch.skinId /*TODO RIGID not SKINID*/];
+        //  for (std::size_t j = 0; j != jointMatrices.size(); ++j) {
+        //    jointMatrices[j] =
+        //      //invRootTransform * //TODO
+        //      inputPoses[j] *
+        //      state_->skins[drawBatch.skinId].inverseBindMatrices()[j];
+        //  }
+        //}
+
         drawBatch.shader->setDrawOffset(drawBatchOffset)
+            //.setJointMatrices(jointMatrices) <--- bindJointBuffer is used here instead.
             .draw(state_->meshes[drawBatch.meshId].second(),
                   drawBatchCommands.slice(&DrawCommand::indexCount), nullptr,
                   drawBatchCommands.slice(&DrawCommand::indexOffsetInBytes));

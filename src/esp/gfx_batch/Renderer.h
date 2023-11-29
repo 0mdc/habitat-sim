@@ -597,6 +597,9 @@ class Renderer {
 
   std::size_t addEmptyNode(Magnum::UnsignedInt sceneId);
 
+
+  std::size_t addRig(const Magnum::UnsignedInt sceneId, const Magnum::UnsignedInt boneCount, std::size_t node);
+
   /**
    * @brief Add a light
    * @param sceneId         Scene ID, expected to be less than
@@ -680,6 +683,10 @@ class Renderer {
    * identities, transformations of other nodes are unspecified.
    */
   Corrade::Containers::StridedArrayView1D<Magnum::Matrix4> transformations(
+      Magnum::UnsignedInt sceneId);
+
+
+  Corrade::Containers::StridedArrayView1D<Corrade::Containers::StridedArrayView1D<Magnum::Matrix4>> rigPoses(
       Magnum::UnsignedInt sceneId);
 
   /**

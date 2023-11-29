@@ -49,6 +49,8 @@ class BatchPlayerImplementation
 
   gfx_batch::Renderer& renderer_;
   Mn::UnsignedInt sceneId_;
+  std::unordered_map<int, std::size_t> rigMap_;
+  std::unordered_map<int, gfx::replay::NodeHandle> rigNodes_;
 };
 }  // namespace sim
 }  // namespace esp
